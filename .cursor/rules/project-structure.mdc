@@ -1,0 +1,35 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Structure Guide
+
+This project follows a modern Next.js 14 structure with TypeScript and Tailwind CSS. Here's a breakdown of the main directories:
+
+## Core Directories
+
+- `app/`: Contains all the route components and pages using Next.js 14 App Router
+- `components/`: Reusable UI components
+- `lib/`: Utility functions and shared logic
+- `hooks/`: Custom React hooks
+- `types/`: TypeScript type definitions
+- `styles/`: Global styles and Tailwind configurations
+- `public/`: Static assets
+
+## Key Files
+
+- [next.config.mjs](mdc:next.config.mjs): Next.js configuration
+- [tailwind.config.ts](mdc:tailwind.config.ts): Tailwind CSS configuration
+- [tsconfig.json](mdc:tsconfig.json): TypeScript configuration
+- [package.json](mdc:package.json): Project dependencies and scripts
+
+## Development Guidelines
+
+1. Always use TypeScript for type safety
+2. Follow the App Router conventions for routing
+3. Keep components modular and reusable
+4. Use Tailwind CSS for styling
+5. Place shared utilities in the `lib` directory
+6. Define types in the `types` directory
+

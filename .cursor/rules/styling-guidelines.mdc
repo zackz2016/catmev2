@@ -1,0 +1,61 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Styling Guidelines
+
+This project uses Tailwind CSS for styling. Follow these guidelines for consistent and maintainable styles.
+
+## Tailwind CSS Usage
+
+1. Use Tailwind utility classes directly in components
+2. Follow the mobile-first approach
+3. Use the predefined color palette from the configuration
+4. Utilize Tailwind's built-in responsive design utilities
+
+## Color System
+
+The project uses a consistent color system defined in [tailwind.config.ts](mdc:tailwind.config.ts). Use these colors for:
+
+- Primary actions
+- Secondary actions
+- Text colors
+- Background colors
+- Border colors
+
+## Typography
+
+- Use the predefined font sizes from Tailwind
+- Maintain consistent line heights
+- Use proper font weights for hierarchy
+- Follow the responsive typography guidelines
+
+## Spacing
+
+- Use Tailwind's spacing scale
+- Maintain consistent padding and margins
+- Use proper spacing between elements
+- Follow the responsive spacing guidelines
+
+## Component Styling
+
+1. Use semantic class names
+2. Group related styles together
+3. Use Tailwind's @apply directive for repeated styles
+4. Keep styles close to the component they affect
+
+## Responsive Design
+
+- Use Tailwind's responsive prefixes (sm:, md:, lg:, xl:)
+- Design mobile-first
+- Test all breakpoints
+- Ensure proper spacing on all devices
+
+## Accessibility
+
+- Maintain proper color contrast
+- Use semantic HTML elements
+- Ensure proper focus states
+- Test with screen readers
+

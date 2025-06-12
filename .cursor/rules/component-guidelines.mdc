@@ -1,0 +1,57 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Component Development Guidelines
+
+## Component Structure
+
+Components should follow these best practices:
+
+1. Use TypeScript interfaces for props
+2. Implement proper error boundaries
+3. Follow the single responsibility principle
+4. Use meaningful component names
+
+## File Organization
+
+- Place components in the `components` directory
+- Group related components in subdirectories
+- Use PascalCase for component files (e.g., `Button.tsx`)
+- Include an `index.ts` file for clean exports
+
+## Component Template
+
+```typescript
+import { FC } from 'react'
+
+interface ComponentProps {
+  // Define props here
+}
+
+export const Component: FC<ComponentProps> = ({ prop1, prop2 }) => {
+  return (
+    // Component JSX
+  )
+}
+```
+
+## Best Practices
+
+1. Keep components small and focused
+2. Use proper TypeScript types
+3. Implement proper error handling
+4. Add JSDoc comments for complex components
+5. Use React hooks appropriately
+6. Follow accessibility guidelines
+7. Implement proper loading states
+8. Use proper semantic HTML elements
+
+## Testing
+
+- Write unit tests for components
+- Test edge cases and error states
+- Ensure proper accessibility testing
+- Test responsive behavior
+
