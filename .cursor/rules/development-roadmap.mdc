@@ -32,7 +32,7 @@ alwaysApply: false
         建议: 在 Next.js 的 middleware.ts 中使用 Clerk 的 clerkMiddleware 来保护路由，确保只有认证用户才能访问 dashboard, tests, gallery, settings 等页面。
         对于 API 路由，也要确保在服务器端进行权限验证，不要仅仅依赖客户端的 Clerk 状态。
 
-#### Stripe 集成
+#### Creem 集成
     -设置 Creem 账户
     -配置订阅产品 (产品、价格、订阅周期)
     -实现 webhook 处理程序:
