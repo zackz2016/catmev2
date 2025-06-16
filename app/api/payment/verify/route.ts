@@ -1,11 +1,12 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { createClient } from '@creem/sdk';
+import { Creem } from "creem";
 
 // 初始化 Creem 客户端
-const creem = createClient({
-  apiKey: process.env.CREEM_API_KEY!,
-  environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
+const creem = new Creem({
+  serverURL: process.env.NODE_ENV === 'production' 
+    ? "https://api.creem.io"
+    : "https://test-api.creem.io"
 });
 
 export async function GET(request: Request) {
@@ -31,7 +32,10 @@ export async function GET(request: Request) {
     }
 
     // 验证支付会话
-    const paymentSession = await creem.payments.retrieve(sessionId);
+    const paymentSession = await creem.retrieveCheckout({
+      checkoutId: sessionId,
+      xApiKey: process.env.CREEM_API_KEY!
+    });
 
     if (paymentSession.status !== 'succeeded') {
       return NextResponse.json({ 
@@ -51,9 +55,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ 
       success: true,
       payment: {
-        amount: paymentSession.amount,
-        currency: paymentSession.currency,
-        status: paymentSession.status,
+        id: paymentSession.id,
+        status: paymentSession.status
       }
     });
 
