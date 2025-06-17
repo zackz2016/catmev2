@@ -1,16 +1,18 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Menu, Sparkles } from "lucide-react"
+import { Menu, Sparkles, Coins } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs"
 import { usePoints } from "@/hooks/use-points"
+import { useRouter } from "next/navigation"
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { isSignedIn } = useUser()
   const { points } = usePoints()
+  const router = useRouter()
 
   return (
     <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
@@ -38,23 +40,34 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center space-x-4">
-          {/* 显示积分 */}
-          <div className="text-sm font-medium text-gray-300">
-            积分: {points}
-          </div>
-          
-          {/* 用户按钮 */}
           {isSignedIn ? (
-            <UserButton afterSignOutUrl="/" />
+            <>
+              <div className="flex items-center space-x-2">
+                <Coins className="w-4 h-4 text-yellow-500" />
+                <span className="text-gray-300">{points}</span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => router.push('/pricing')}
+                className="hidden md:flex border-purple-500/50 text-purple-400 hover:text-purple-300"
+              >
+                充值
+              </Button>
+              <UserButton afterSignOutUrl="/" />
+            </>
           ) : (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
               <SignInButton mode="modal">
                 <Button variant="ghost" size="sm">
                   登录
                 </Button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <Button variant="default" size="sm">
+                <Button 
+                  size="sm"
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                >
                   注册
                 </Button>
               </SignUpButton>

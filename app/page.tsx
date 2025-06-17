@@ -14,7 +14,7 @@ export default function Home() {
       <Features />
       <HowToUse />
       <Gallery />
-      <Pricing />
+      <Pricing isSection />
       <Footer />
     </div>
   )
