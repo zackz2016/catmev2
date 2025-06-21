@@ -37,7 +37,70 @@
     图标库：Lucide React
     国际化: Next.js i18n
 
+## 环境变量配置
 
+创建 `.env.local` 文件并添加以下环境变量：
+
+```env
+# Creem 支付服务配置
+CREEM_API_KEY=your_creem_api_key_here
+NEXT_PUBLIC_CREEM_API_KEY=your_creem_api_key_here  # 用于前端签名验证
+
+# 应用URL配置 - 用于支付回调（开发环境）
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# 应用URL配置 - 用于支付回调（生产环境）
+# NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# Clerk 认证配置
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
+```
+
+## 支付流程说明
+
+### 支付流程页面
+
+1. **定价页面**: `/pricing` - 用户选择套餐
+2. **支付成功页面**: `/payment/success` - 支付完成后的处理页面
+
+### 支付流程
+
+1. 用户在定价页面选择套餐并点击订阅
+2. 系统验证用户登录状态
+3. 调用 `/api/payment` 创建支付会话
+4. 跳转到 Creem 支付页面
+5. 支付完成后跳转到 `/payment/success`
+6. 系统自动验证支付状态
+7. 显示支付结果并自动跳转
+
+### API 接口
+
+- `POST /api/payment` - 创建支付会话
+- `GET /api/payment/verify` - 验证支付状态
+
+## 安装和运行
+
+```bash
+# 安装依赖
+pnpm install
+
+# 运行开发服务器
+pnpm dev
+
+# 构建项目
+pnpm build
+
+# 运行生产版本
+pnpm start
+```
+
+## 注意事项
+
+1. 确保在 `.env.local` 中正确设置 `NEXT_PUBLIC_APP_URL`
+2. Creem API Key 需要从 Creem 控制台获取
+3. 支付回调 URL 会自动设置为 `{NEXT_PUBLIC_APP_URL}/payment/success`
+4. 支付取消 URL 会自动设置为 `{NEXT_PUBLIC_APP_URL}/pricing?status=cancelled`
 
 ## 前端组件布局
 

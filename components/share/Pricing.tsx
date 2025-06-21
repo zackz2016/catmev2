@@ -1,3 +1,6 @@
+// 价格方案组件
+// 展示不同的订阅计划和价格选项，支持用户订阅和支付
+
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -8,52 +11,7 @@ import { useUser } from "@clerk/nextjs"
 import { useToast } from "@/hooks/use-toast"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-
-const PRICE_PLANS = [
-  {
-    id: 'lite',
-    planId: 'lite',
-    title: 'Catme-lite',
-    description: '适合个人用户和轻度使用',
-    price: '9.9',
-    features: [
-      { text: '基础版套餐', included: true },
-      { text: '基础风格模板', included: true },
-      { text: '标准分辨率', included: true },
-      { text: '商业使用权', included: false },
-    ],
-  },
-  {
-    id: 'pro',
-    planId: 'pro',
-    title: 'Catme-pro',
-    description: '适合专业创作者和小团队',
-    price: '19.9',
-    popular: true,
-    features: [
-      { text: '专业版套餐', included: true },
-      { text: '所有风格模板', included: true },
-      { text: 'HD分辨率', included: true },
-      { text: '商业使用权', included: true },
-      { text: '优先处理', included: true },
-    ],
-  },
-  {
-    id: 'super',
-    planId: 'super',
-    title: 'Catme-super',
-    description: '适合大型团队和企业用户',
-    price: '49.9',
-    features: [
-      { text: '超级版套餐', included: true },
-      { text: '自定义风格模板', included: true },
-      { text: '超高清分辨率', included: true },
-      { text: '扩展商业权限', included: true },
-      { text: '专属客服支持', included: true },
-      { text: 'API访问', included: true },
-    ],
-  },
-];
+import { PRICE_PLANS } from "@/data/pricingData"
 
 interface PricingProps {
   isSection?: boolean;
@@ -66,8 +24,18 @@ export function Pricing({ isSection = false }: PricingProps) {
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const handleSubscribe = async (planId: string) => {
+    if (!isSignedIn) {
+      toast({
+        title: "请先登录",
+        description: "订阅服务需要先登录账号",
+      });
+      return;
+    }
+
     try {
       console.log('开始订阅流程，planId:', planId);
+      setIsLoading(planId);
+      
       const response = await fetch('/api/payment', {
         method: 'POST',
         headers: {
@@ -82,7 +50,6 @@ export function Pricing({ isSection = false }: PricingProps) {
 
       if (data.success && data.url) {
         console.log('准备跳转到支付页面:', data.url);
-        // 使用window.location.href进行跳转
         window.location.href = data.url;
       } else {
         console.error('支付创建失败:', data.error);
@@ -99,6 +66,8 @@ export function Pricing({ isSection = false }: PricingProps) {
         description: "请稍后重试",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(null);
     }
   };
 
@@ -120,8 +89,14 @@ export function Pricing({ isSection = false }: PricingProps) {
             <CardTitle className="text-white text-xl">{plan.title}</CardTitle>
             <CardDescription className="text-gray-400">{plan.description}</CardDescription>
             <div className="mt-4">
-              <span className="text-3xl font-bold text-white">${plan.price}</span>
-              <span className="text-gray-400">/月</span>
+              {plan.price === 'Free' ? (
+                <span className="text-3xl font-bold text-green-400">Free</span>
+              ) : (
+                <>
+                  <span className="text-3xl font-bold text-white">${plan.price}</span>
+                  <span className="text-gray-400">{plan.period}</span>
+                </>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -139,17 +114,23 @@ export function Pricing({ isSection = false }: PricingProps) {
                 </li>
               ))}
             </ul>
-            <Button 
-              className={`w-full mt-6 ${
-                plan.popular
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
-                  : 'bg-gray-700 hover:bg-gray-600'
-              }`}
-              onClick={() => handleSubscribe(plan.planId)}
-              disabled={!!isLoading}
-            >
-              {isLoading === plan.planId ? '处理中...' : '立即订阅'}
-            </Button>
+            {plan.price === 'Free' ? (
+              <div className="w-full mt-6 py-2 text-center text-green-400 font-medium">
+                {/* 默认免费计划 */}
+              </div>
+            ) : (
+              <Button 
+                className={`w-full mt-6 ${
+                  plan.popular
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                }`}
+                onClick={() => handleSubscribe(plan.planId)}
+                disabled={!!isLoading}
+              >
+                {isLoading === plan.planId ? '处理中...' : '立即订阅'}
+              </Button>
+            )}
           </CardContent>
         </Card>
       ))}

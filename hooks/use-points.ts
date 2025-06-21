@@ -33,10 +33,14 @@ export function usePoints() {
       }
     };
 
-    fetchPoints();
+    if (isSignedIn) {
+      fetchPoints();
+    } else {
+      setLoading(false);
+    }
   }, [isSignedIn]); // 当登录状态改变时重新获取积分
 
-  const updatePoints = async (amount: number, type: 'add' | 'subtract', reason: string) => {
+  const updatePoints = async (amount: number, type: 'EARN' | 'SPEND', reason: string) => {
     try {
       const response = await fetch('/api/points', {
         method: 'POST',
@@ -61,10 +65,52 @@ export function usePoints() {
     }
   };
 
+  // 消费积分的便捷方法
+  const spendPoints = async (amount: number, reason: string) => {
+    if (points < amount) {
+      setError('积分不足');
+      return false;
+    }
+    return await updatePoints(amount, 'SPEND', reason);
+  };
+
+  // 获得积分的便捷方法
+  const earnPoints = async (amount: number, reason: string) => {
+    return await updatePoints(amount, 'EARN', reason);
+  };
+
+  // 检查是否有足够积分
+  const hasEnoughPoints = (requiredAmount: number) => {
+    return points >= requiredAmount;
+  };
+
+  // 刷新积分
+  const refreshPoints = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/points');
+      const data: PointsResponse = await response.json();
+      
+      if (data.success && typeof data.points === 'number') {
+        setPoints(data.points);
+      } else {
+        setError(data.error || '获取积分失败');
+      }
+    } catch (err) {
+      setError('获取积分失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     points,
     loading,
     error,
     updatePoints,
+    spendPoints,
+    earnPoints,
+    hasEnoughPoints,
+    refreshPoints,
   };
 } 

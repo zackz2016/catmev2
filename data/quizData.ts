@@ -216,5 +216,74 @@ export const questions: Question[] = [
         }
       }
     ]
+  },
+  {
+    id: 4,
+    title: "你更喜欢哪种图片风格？",
+    options: [
+      {
+        id: "4A",
+        text: "可爱卡通风格",
+        attributes: {
+          style: "cartoon"
+        }
+      },
+      {
+        id: "4B",
+        text: "真实摄影风格",
+        attributes: {
+          style: "realistic"
+        }
+      },
+      {
+        id: "4C",
+        text: "水彩手绘风格",
+        attributes: {
+          style: "watercolor"
+        }
+      },
+      {
+        id: "4D",
+        text: "油画艺术风格",
+        attributes: {
+          style: "oil-painting"
+        }
+      },
+      {
+        id: "4E",
+        text: "简约线条风格",
+        attributes: {
+          style: "minimalist"
+        }
+      },
+      {
+        id: "4F",
+        text: "复古怀旧风格",
+        attributes: {
+          style: "vintage"
+        }
+      },
+      {
+        id: "4G",
+        text: "梦幻仙境风格",
+        attributes: {
+          style: "fantasy"
+        }
+      },
+      {
+        id: "4H",
+        text: "日系动漫风格",
+        attributes: {
+          style: "anime"
+        }
+      },
+      {
+        id: "4I",
+        text: "黑白素描风格",
+        attributes: {
+          style: "sketch"
+        }
+      }
+    ]
   }
 ]; 

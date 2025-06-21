@@ -18,13 +18,21 @@ declare module 'creem' {
     id: string;
     checkoutUrl: string;
     status: string;
-    amount: number;
-    currency: string;
+    amount?: number;
+    currency?: string;
     metadata?: Record<string, any>;
     request_id?: string;
     mode: string;
     object: string;
-    product: string;
+    product: any;
     units: number;
+    order?: {
+      id: string;
+      amount: number;
+      currency: string;
+      status: string;
+    };
+    subscription?: any;
+    customer?: any;
   }
 } 

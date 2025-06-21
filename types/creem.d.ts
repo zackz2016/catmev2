@@ -19,6 +19,7 @@ declare module 'creem' {
 
   export interface CheckoutResult {
     url: string;
+    success_url: string;
     id: string;
     status: string;
     metadata?: Record<string, any>;

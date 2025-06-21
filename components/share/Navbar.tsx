@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Menu, Sparkles, Coins } from "lucide-react"
+import { Menu, Sparkles, Coins, User } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs"
@@ -34,10 +34,15 @@ export function Navbar() {
           <Link href="#how-to-use" className="text-gray-300 hover:text-white transition-colors">
             How to Use
           </Link>
-          <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">
-            Pricing
-          </Link>
-        </nav>
+                      <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">
+              Pricing
+            </Link>
+            {isSignedIn && (
+              <Link href="/profile" className="text-gray-300 hover:text-white transition-colors">
+                Profile
+              </Link>
+            )}
+          </nav>
 
         <div className="flex items-center space-x-4">
           {isSignedIn ? (
@@ -46,6 +51,15 @@ export function Navbar() {
                 <Coins className="w-4 h-4 text-yellow-500" />
                 <span className="text-gray-300">{points}</span>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => router.push('/profile')}
+                className="hidden md:flex border-gray-500/50 text-gray-400 hover:text-gray-300"
+              >
+                <User className="w-4 h-4 mr-2" />
+                Profile
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"

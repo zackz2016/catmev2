@@ -1,0 +1,115 @@
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { supabase } from '@/lib/supabase';
+
+export async function GET(request: Request) {
+  try {
+    const session = await auth();
+    const url = new URL(request.url);
+    
+    // 获取查询参数
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '12');
+    const userId = url.searchParams.get('userId'); // 可选：获取特定用户的图片
+    const onlyPublic = url.searchParams.get('public') === 'true'; // 只获取公开图片
+    
+    // 计算偏移量
+    const offset = (page - 1) * limit;
+    
+    // 构建查询，包含更多字段
+    let query = supabase
+      .from('generated_images')
+      .select(`
+        id,
+        user_id,
+        cloudinary_public_id,
+        cloudinary_url,
+        prompt,
+        image_style,
+        user_rating,
+        download_count,
+        share_count,
+        is_public,
+        width,
+        height,
+        file_size,
+        created_at,
+        updated_at
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    
+    // 如果指定了用户ID，只获取该用户的图片
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+    
+    // 如果是公开模式且用户未登录，可以查看所有图片
+    // 如果用户已登录，也可以查看所有图片
+    // 这里可以根据需要添加更多的权限控制
+    
+    const { data: images, error } = await query;
+    
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch images' },
+        { status: 500 }
+      );
+    }
+    
+    // 获取总数用于分页
+    let countQuery = supabase
+      .from('generated_images')
+      .select('*', { count: 'exact', head: true });
+    
+    if (userId) {
+      countQuery = countQuery.eq('user_id', userId);
+    }
+    
+    const { count, error: countError } = await countQuery;
+    
+    if (countError) {
+      console.error('Count error:', countError);
+    }
+    
+    const total = count || 0;
+    const totalPages = Math.ceil(total / limit);
+    const hasMore = page < totalPages;
+    
+    return NextResponse.json({
+      success: true,
+      images: images?.map(image => ({
+        id: image.id,
+        publicId: image.cloudinary_public_id,
+        url: image.cloudinary_url,
+        prompt: image.prompt,
+        imageStyle: image.image_style,
+        userRating: image.user_rating,
+        downloadCount: image.download_count,
+        shareCount: image.share_count,
+        isPublic: image.is_public,
+        width: image.width,
+        height: image.height,
+        fileSize: image.file_size,
+        createdAt: image.created_at,
+        updatedAt: image.updated_at,
+        userId: image.user_id,
+      })) || [],
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore,
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching images:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch images' },
+      { status: 500 }
+    );
+  }
+} 
