@@ -7,6 +7,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)', 
   '/api/generate-cat',
   '/api/points',
+  '/api/images(.*)', // 允许未注册用户访问图库API
   '/api/webhooks/clerk'
 ])
 

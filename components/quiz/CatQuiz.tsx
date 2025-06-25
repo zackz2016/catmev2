@@ -25,27 +25,27 @@ export default function CatQuiz() {
   const [imageSaved, setImageSaved] = useState(false);
 
   // 如果用户未登录，显示登录提示
-  if (!isSignedIn) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="w-[512px] h-[512px] mx-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 overflow-hidden">
-          <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              登录以开始测试
-            </h2>
-            <p className="text-gray-600">
-              登录后即可开始测试，生成专属于你的猫咪形象！
-            </p>
-            <SignInButton mode="modal">
-              <button className="px-6 py-3 bg-gradient-to-r from-purple-400/80 to-pink-400/80 text-white rounded-xl hover:from-purple-500/80 hover:to-pink-500/80 transition-all duration-200 shadow-md hover:shadow-lg">
-                立即登录
-              </button>
-            </SignInButton>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (!isSignedIn) {
+  //   return (
+  //     <div className="max-w-4xl mx-auto space-y-6">
+  //       <div className="w-[512px] h-[512px] mx-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 overflow-hidden">
+  //         <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
+  //           <h2 className="text-2xl font-bold text-gray-800">
+  //             登录以开始测试
+  //           </h2>
+  //           <p className="text-gray-600">
+  //             登录后即可开始测试，生成专属于你的猫咪形象！
+  //           </p>
+  //           <SignInButton mode="modal">
+  //             <button className="px-6 py-3 bg-gradient-to-r from-purple-400/80 to-pink-400/80 text-white rounded-xl hover:from-purple-500/80 hover:to-pink-500/80 transition-all duration-200 shadow-md hover:shadow-lg">
+  //               立即登录
+  //             </button>
+  //           </SignInButton>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   const handleAnswer = async (optionId: string) => {
     // 检查积分是否足够

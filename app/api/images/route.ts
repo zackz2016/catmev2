@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   try {
     const session = await auth();
     const url = new URL(request.url);
+    const isAuthenticated = !!session?.userId;
     
     // 获取查询参数
     const page = parseInt(url.searchParams.get('page') || '1');
@@ -42,11 +43,14 @@ export async function GET(request: Request) {
     // 如果指定了用户ID，只获取该用户的图片
     if (userId) {
       query = query.eq('user_id', userId);
+      // 如果查看特定用户图片且非本人，需要验证权限
+      if (!isAuthenticated || session.userId !== userId) {
+        query = query.eq('is_public', true); // 只能看到公开图片
+      }
+    } else if (onlyPublic || !isAuthenticated) {
+      // 未登录用户或明确要求公开图片时，只显示公开图片
+      query = query.eq('is_public', true);
     }
-    
-    // 如果是公开模式且用户未登录，可以查看所有图片
-    // 如果用户已登录，也可以查看所有图片
-    // 这里可以根据需要添加更多的权限控制
     
     const { data: images, error } = await query;
     

@@ -2,15 +2,28 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Coins, CreditCard, History, Trophy, Plus, Minus, User } from 'lucide-react';
+import { 
+  Coins, 
+  CreditCard, 
+  History, 
+  Trophy, 
+  Plus, 
+  Minus, 
+  User, 
+  ImageIcon,
+  BarChart3,
+  Package,
+  Star
+} from 'lucide-react';
 import type { TransactionsResponse, PaymentTransaction, PointsTransaction } from '@/types/transactions';
 import type { PointsResponse } from '@/types/points';
+import type { ImagesApiResponse, GeneratedImage } from '@/types/images';
 
 type TransactionData = {
   paymentTransactions: PaymentTransaction[];
@@ -20,15 +33,25 @@ type TransactionData = {
 
 export default function ProfilePage() {
   const { user, isLoaded } = useUser();
+  const router = useRouter();
+  const [activeSection, setActiveSection] = useState('overview');
   const [points, setPoints] = useState<number>(0);
   const [transactions, setTransactions] = useState<TransactionData>({
     paymentTransactions: [],
     pointsTransactions: [],
     allTransactions: [],
   });
+  const [userImages, setUserImages] = useState<GeneratedImage[]>([]);
+  const [imagesPagination, setImagesPagination] = useState({
+    page: 1,
+    limit: 12,
+    total: 0,
+    totalPages: 0,
+    hasMore: false
+  });
   const [loading, setLoading] = useState(true);
+  const [imagesLoading, setImagesLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('all');
 
   const fetchPoints = async () => {
     try {
@@ -43,60 +66,61 @@ export default function ProfilePage() {
     }
   };
 
-  const fetchTransactions = useCallback(async (type: 'all' | 'payments' | 'points') => {
+  const fetchTransactions = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/transactions?type=${type}`);
+      const res = await fetch('/api/transactions?type=all');
       const data: TransactionsResponse = await res.json();
       if (data.success && data.data) {
         const { paymentTransactions, pointsTransactions } = data.data;
-        setTransactions(prev => {
-          // Filter out points transactions that are from a purchase, as they are redundant
-          const nonPurchasePointsTransactions = pointsTransactions.filter(
-            pt => !pt.reason?.startsWith('Purchase:') && !pt.reason?.startsWith('购买计划:')
-          );
-
-          const newAll = [...paymentTransactions, ...nonPurchasePointsTransactions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          
-          if (type === 'all') {
-            // For 'all', we still want the full, unfiltered lists for the other tabs if needed later
-            return { allTransactions: newAll, paymentTransactions, pointsTransactions };
-          }
-          if (type === 'payments') {
-            return { ...prev, paymentTransactions: paymentTransactions };
-          }
-          if (type === 'points') {
-            // For the points tab, we show all points transactions
-            return { ...prev, pointsTransactions: pointsTransactions };
-          }
-          return prev;
+        setTransactions({
+          paymentTransactions,
+          pointsTransactions,
+          allTransactions: [...paymentTransactions, ...pointsTransactions].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
         });
       } else {
         setError(data.error || 'Failed to load transactions.');
       }
     } catch (e) {
-      console.error(`Failed to fetch ${type} transactions`, e);
-      setError(`Failed to load ${type} transactions.`);
+      console.error('Failed to fetch transactions', e);
+      setError('Failed to load transactions.');
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const fetchUserImages = useCallback(async (page = 1) => {
+    if (!user?.id) return;
+    
+    try {
+      setImagesLoading(true);
+      const res = await fetch(`/api/images?userId=${user.id}&page=${page}&limit=12`);
+      const data: ImagesApiResponse = await res.json();
+      
+      if (data.success) {
+        if (page === 1) {
+          setUserImages(data.images);
+        } else {
+          setUserImages(prev => [...prev, ...data.images]);
+        }
+        setImagesPagination(data.pagination);
+      }
+    } catch (e) {
+      console.error('Failed to fetch user images', e);
+    } finally {
+      setImagesLoading(false);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     if (isLoaded && user) {
       fetchPoints();
-      fetchTransactions('all');
+      fetchTransactions();
+      fetchUserImages();
     }
-  }, [isLoaded, user, fetchTransactions]);
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    if (tab === 'payments' && transactions.paymentTransactions.length === 0) {
-      fetchTransactions('payments');
-    } else if (tab === 'points' && transactions.pointsTransactions.length === 0) {
-      fetchTransactions('points');
-    }
-  };
+  }, [isLoaded, user, fetchTransactions, fetchUserImages]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -124,26 +148,52 @@ export default function ProfilePage() {
     return plans[planId] || planId;
   };
 
+  const loadMoreImages = () => {
+    if (imagesPagination.hasMore && !imagesLoading) {
+      fetchUserImages(imagesPagination.page + 1);
+    }
+  };
+
+  // 菜单配置
+  const menuItems = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: BarChart3,
+      description: 'Account overview and statistics'
+    },
+    {
+      id: 'orders',
+      label: 'My Orders',
+      icon: Package,
+      description: 'Purchase history and plans'
+    },
+    {
+      id: 'credits',
+      label: 'My Credits',
+      icon: Coins,
+      description: 'Points transactions and history'
+    },
+    {
+      id: 'assets',
+      label: 'My Assets',
+      icon: ImageIcon,
+      description: 'Generated images gallery'
+    }
+  ];
+
   if (!isLoaded) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-          </div>
-          <Skeleton className="h-96" />
-        </div>
+      <div className="container mx-auto px-4 py-6">
+        <Skeleton className="h-[500px] w-full max-w-6xl mx-auto" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Alert>
+      <div className="container mx-auto px-4 py-6">
+        <Alert className="max-w-2xl mx-auto">
           <AlertDescription>
             Please sign in to view your profile.
           </AlertDescription>
@@ -153,181 +203,215 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="flex flex-col items-center space-y-4">
-            {user.imageUrl && (
-              <img 
-                src={user.imageUrl} 
-                alt="Profile" 
-                className="w-16 h-16 rounded-full border-4 border-gray-200"
-              />
-            )}
-            <div>
-              <h1 className="text-3xl font-bold">
-                {user.fullName || user.firstName || 'User'}
-              </h1>
-              <p className="text-muted-foreground text-lg">
-                {user.primaryEmailAddress?.emailAddress || 'No email'}
-              </p>
+    <div className="min-h-screen bg-gray-900 text-white pt-20">
+      <div className="container mx-auto px-4 py-6">
+        <div className="max-w-6xl mx-auto">
+          {/* 错误提示 */}
+          {error && (
+            <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-500/30 text-red-300">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex gap-6">
+            {/* 左侧导航 */}
+            <div className="w-80 shrink-0">
+              {/* 用户账户信息 */}
+              <Card className="mb-4 bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base text-white">
+                    <User className="h-4 w-4 text-purple-400" />
+                    Account Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center space-x-3">
+                    {user?.imageUrl && (
+                      <img 
+                        src={user.imageUrl} 
+                        alt="Profile" 
+                        className="w-12 h-12 rounded-full border-2 border-purple-500/30"
+                      />
+                    )}
+                                         <div className="space-y-1 flex-1 min-w-0">
+                       <div>
+                         <p className="text-xs text-gray-400">Full Name</p>
+                         <p className="text-sm font-medium text-white">{user?.fullName || user?.firstName || 'Not set'}</p>
+                       </div>
+                       <div>
+                         <p className="text-xs text-gray-400">Email Address</p>
+                         <p className="text-sm font-medium text-white break-all">{user?.primaryEmailAddress?.emailAddress || 'No email'}</p>
+                       </div>
+                      <div>
+                        <p className="text-xs text-gray-400">Member Since</p>
+                        <p className="text-sm font-medium text-white">
+                          {user?.createdAt ? new Date(user.createdAt.toISOString()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 导航菜单 */}
+              <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+                <CardContent className="p-2">
+                  <nav className="space-y-1">
+                    {menuItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSection(item.id)}
+                        className={`w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                          activeSection === item.id
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                            : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
+                        }`}
+                      >
+                        <item.icon className="mr-3 h-4 w-4" />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 右侧内容区域 */}
+            <div className="flex-1 min-w-0">
+              {/* Overview Section */}
+              {activeSection === 'overview' && (
+                <OverviewSection 
+                  user={user}
+                  points={points}
+                  totalPurchases={transactions.paymentTransactions.length}
+                  totalImages={userImages.length}
+                  loading={loading}
+                />
+              )}
+
+              {/* My Orders Section */}
+              {activeSection === 'orders' && (
+                <OrdersSection 
+                  transactions={transactions.paymentTransactions}
+                  loading={loading}
+                  formatDate={formatDate}
+                  formatAmount={formatAmount}
+                  getPlanDisplayName={getPlanDisplayName}
+                />
+              )}
+
+              {/* My Credits Section */}
+              {activeSection === 'credits' && (
+                <CreditsSection 
+                  transactions={transactions.pointsTransactions}
+                  currentPoints={points}
+                  loading={loading}
+                  formatDate={formatDate}
+                />
+              )}
+
+              {/* My Assets Section */}
+              {activeSection === 'assets' && (
+                <AssetsSection 
+                  images={userImages}
+                  pagination={imagesPagination}
+                  loading={imagesLoading}
+                  onLoadMore={loadMoreImages}
+                />
+              )}
             </div>
           </div>
-          <p className="text-muted-foreground">
-            Manage your account and view your activity
-          </p>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Available Points</CardTitle>
-              <Coins className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? <Skeleton className="h-8 w-16" /> : points.toLocaleString()}
-              </div>
-              {/* <p className="text-xs text-muted-foreground">
-                Use points to generate cat images
-              </p> */}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Purchases</CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : (
-                  transactions?.paymentTransactions.length || 0
-                )}
-              </div>
-              {/* <p className="text-xs text-muted-foreground">
-                Successful payments
-              </p> */}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Member Since</CardTitle>
-              <Trophy className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {user.createdAt ? formatDate(user.createdAt.toISOString()).split(',')[0] : 'Unknown'}
-              </div>
-              {/* <p className="text-xs text-muted-foreground">
-                Account creation date
-              </p> */}
-            </CardContent>
-          </Card>
+// Overview组件
+function OverviewSection({ 
+  user, 
+  points, 
+  totalPurchases, 
+  totalImages, 
+  loading 
+}: { 
+  user: any; 
+  points: number; 
+  totalPurchases: number; 
+  totalImages: number; 
+  loading: boolean; 
+}) {
+  const router = useRouter();
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-white">Overview</h2>
+          <p className="text-sm text-gray-400">Your account summary and statistics</p>
         </div>
+        <Button 
+          onClick={() => router.push('/pricing')}
+          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+          size="sm"
+        >
+          <Coins className="h-4 w-4 mr-2" />
+          Recharge
+        </Button>
+      </div>
 
-        {/* Transaction History */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
-              Transaction History
-            </CardTitle>
-            {/* <CardDescription>
-              View your payment and points transaction history
-            </CardDescription> */}
+
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium text-white">Available Points</CardTitle>
+            <Coins className="h-3 w-3 text-purple-400" />
           </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-lg font-bold text-white">
+              {loading ? <Skeleton className="h-6 w-12 bg-gray-700" /> : points.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-400">Credits balance</p>
+          </CardContent>
+        </Card>
 
-          <CardContent>
-            {loading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : (
-              <Tabs defaultValue="all" onValueChange={handleTabChange}>
-                {/* <TabsList className="grid w-full grid-cols-3 flex-row justify-center">
-                  <TabsTrigger value="all" className="flex flex-col gap-1 h-16 items-center justify-center">
-                    <span>All</span>
-                    <span className="text-xs text-muted-foreground">
-                      {transactions.allTransactions.length} records
-                    </span>
-                  </TabsTrigger>
+        <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium text-white">Total Purchases</CardTitle>
+            <CreditCard className="h-3 w-3 text-purple-400" />
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-lg font-bold text-white">
+              {loading ? <Skeleton className="h-6 w-12 bg-gray-700" /> : totalPurchases}
+            </div>
+            <p className="text-xs text-gray-400">Completed orders</p>
+          </CardContent>
+        </Card>
 
-                  <TabsTrigger value="payments" className="flex flex-col gap-1 h-16 items-center justify-center">
-                    <span>Payments</span>
-                    <span className="text-sm font-bold text-green-600">
-                      {formatAmount(transactions.paymentTransactions.reduce((sum, t) => sum + t.amount, 0))}
-                    </span>
-                  </TabsTrigger>
+        <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium text-white">Generated Images</CardTitle>
+            <ImageIcon className="h-3 w-3 text-purple-400" />
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-lg font-bold text-white">
+              {loading ? <Skeleton className="h-6 w-12 bg-gray-700" /> : totalImages}
+            </div>
+            <p className="text-xs text-gray-400">Created assets</p>
+          </CardContent>
+        </Card>
 
-                  <TabsTrigger value="points" className="flex flex-col gap-1 h-16 items-center justify-center">
-                    <span>Points</span>
-                    <span className="text-sm font-bold text-blue-600">
-                      +{transactions.pointsTransactions
-                        .filter(t => t.type === 'EARN')
-                        .reduce((sum, t) => sum + (t.points || t.amount), 0)
-                        .toLocaleString()
-                      }
-                    </span>
-                  </TabsTrigger>
-
-                </TabsList> */}
-
-                <TabsContent value="all" className="space-y-4 pt-4">
-                  {transactions.allTransactions.length > 0 ? (
-                    transactions.allTransactions.map((item) => (
-                      'plan_id' in item ? (
-                        <PaymentTransactionItem key={`payment-${item.id}`} transaction={item as PaymentTransaction} />
-                      ) : (
-                        <PointsTransactionItem key={`points-${item.id}`} transaction={item as PointsTransaction} />
-                      )
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">No transactions found</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="payments" className="space-y-4 pt-4">
-                  {transactions.paymentTransactions.length > 0 ? (
-                    transactions.paymentTransactions.map((transaction) => (
-                      <PaymentTransactionItem key={transaction.id} transaction={transaction} />
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">No payment transactions found</p>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="points" className="space-y-4 pt-4">
-                  {transactions.pointsTransactions.length > 0 ? (
-                    transactions.pointsTransactions.map((transaction) => (
-                      <PointsTransactionItem key={transaction.id} transaction={transaction} />
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">No points transactions found</p>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            )}
+        <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium text-white">Quiz Completed</CardTitle>
+            <Trophy className="h-3 w-3 text-purple-400" />
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="text-lg font-bold text-white">
+              {loading ? <Skeleton className="h-6 w-12 bg-gray-700" /> : totalImages}
+            </div>
+            <p className="text-xs text-gray-400">Personality tests</p>
           </CardContent>
         </Card>
       </div>
@@ -335,62 +419,268 @@ export default function ProfilePage() {
   );
 }
 
-// Separate components for transaction items for clarity
-
-function PaymentTransactionItem({ transaction }: { transaction: PaymentTransaction }) {
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const getPlanDisplayName = (planId: string) => ({ 'lite': 'Lite Plan', 'pro': 'Pro Plan', 'super': 'Super Plan' }[planId] || planId);
-  const formatAmount = (amount: number, currency = 'USD') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency
-    }).format(amount / 100);
-  };
-
+// Orders组件
+function OrdersSection({ 
+  transactions, 
+  loading, 
+  formatDate, 
+  formatAmount, 
+  getPlanDisplayName 
+}: { 
+  transactions: PaymentTransaction[]; 
+  loading: boolean; 
+  formatDate: (date: string) => string; 
+  formatAmount: (amount: number, currency?: string) => string; 
+  getPlanDisplayName: (planId: string) => string; 
+}) {
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-      <div className="flex items-center gap-4">
-        <div className="p-2 bg-green-100 rounded-full">
-          <CreditCard className="h-5 w-5 text-green-600" />
-        </div>
-        <div className="flex-grow">
-          <p className="font-semibold">Purchase: {getPlanDisplayName(transaction.plan_id)}</p>
-          <p className="text-sm text-muted-foreground">{formatDate(transaction.created_at)}</p>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-white">My Orders</h2>
+        <p className="text-sm text-gray-400">Your purchase history and subscription plans</p>
       </div>
-      <div className="text-right">
-        <Badge className="bg-green-500 text-white">
-          {formatAmount(transaction.amount, transaction.currency)}
-        </Badge>
-        <p className="text-sm text-muted-foreground mt-1">
-          +{transaction.points_awarded} points
-        </p>
-      </div>
+
+      <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-white">
+            <Package className="h-4 w-4 text-purple-400" />
+            Purchase History
+          </CardTitle>
+          <CardDescription className="text-sm text-gray-400">
+            View all your completed purchases and subscription plans
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full bg-gray-700" />
+              ))}
+            </div>
+          ) : transactions.length > 0 ? (
+            <div className="space-y-3">
+              {transactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg border border-gray-600/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-green-500/20 rounded-full">
+                      <CreditCard className="h-4 w-4 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{getPlanDisplayName(transaction.plan_id)}</p>
+                      <p className="text-xs text-gray-400">{formatDate(transaction.created_at)}</p>
+                      <p className="text-xs text-gray-500">Order ID: {transaction.order_id}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge className="bg-gradient-to-r from-green-500 to-green-400 text-white mb-1 text-xs">
+                      {formatAmount(transaction.amount, transaction.currency)}
+                    </Badge>
+                    <p className="text-xs text-gray-400">
+                      +{transaction.points_awarded} points
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <Package className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-400">No purchase history found</p>
+              <p className="text-xs text-gray-500">Your completed orders will appear here</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function PointsTransactionItem({ transaction }: { transaction: PointsTransaction }) {
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const isEarn = transaction.type === 'EARN';
-  
-  // Use points field if available, otherwise fall back to amount
-  const pointAmount = transaction.points || transaction.amount;
-
+// Credits组件
+function CreditsSection({ 
+  transactions, 
+  currentPoints, 
+  loading, 
+  formatDate 
+}: { 
+  transactions: PointsTransaction[]; 
+  currentPoints: number; 
+  loading: boolean; 
+  formatDate: (date: string) => string; 
+}) {
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-      <div className="flex items-center gap-4">
-        <div className={`p-2 rounded-full ${isEarn ? 'bg-blue-100' : 'bg-orange-100'}`}>
-          {isEarn ? <Plus className="h-5 w-5 text-blue-600" /> : <Minus className="h-5 w-5 text-orange-600" />}
-        </div>
-        <div>
-          <p className="font-semibold">{transaction.reason || 'Points Transaction'}</p>
-          <p className="text-sm text-muted-foreground">{formatDate(transaction.created_at)}</p>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-white">My Credits</h2>
+        <p className="text-sm text-gray-400">Track your points balance and transaction history</p>
       </div>
-      <Badge className={isEarn ? 'bg-blue-500 text-white' : 'bg-orange-500 text-white'}>
-        {isEarn ? '+' : '-'} {pointAmount.toLocaleString()} points
-      </Badge>
+
+      {/* Current Balance */}
+      <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-white">
+            <Coins className="h-4 w-4 text-purple-400" />
+            Current Balance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            {loading ? <Skeleton className="h-8 w-20 bg-gray-700" /> : `${currentPoints.toLocaleString()} credits`}
+          </div>
+          <p className="text-sm text-gray-400 mt-1">
+            Available for generating images
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Transaction History */}
+      <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-white">
+            <History className="h-4 w-4 text-purple-400" />
+            Transaction History
+          </CardTitle>
+          <CardDescription className="text-sm text-gray-400">
+            Complete log of your points transactions
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-14 w-full bg-gray-700" />
+              ))}
+            </div>
+          ) : transactions.length > 0 ? (
+            <div className="space-y-3">
+              {transactions.map((transaction) => {
+                const isEarn = transaction.type === 'EARN';
+                const pointAmount = transaction.points || transaction.amount;
+                
+                return (
+                  <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-700/30 rounded-lg border border-gray-600/30">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-1.5 rounded-full ${isEarn ? 'bg-blue-500/20' : 'bg-orange-500/20'}`}>
+                        {isEarn ? <Plus className="h-4 w-4 text-blue-400" /> : <Minus className="h-4 w-4 text-orange-400" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">{transaction.reason || 'Points Transaction'}</p>
+                        <p className="text-xs text-gray-400">{formatDate(transaction.created_at)}</p>
+                      </div>
+                    </div>
+                    <Badge className={`text-xs ${isEarn ? 'bg-gradient-to-r from-blue-500 to-blue-400 text-white' : 'bg-gradient-to-r from-orange-500 to-orange-400 text-white'}`}>
+                      {isEarn ? '+' : '-'} {pointAmount.toLocaleString()} credits
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <Coins className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-400">No credit transactions found</p>
+              <p className="text-xs text-gray-500">Your points history will appear here</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Assets组件
+function AssetsSection({ 
+  images, 
+  pagination, 
+  loading, 
+  onLoadMore 
+}: { 
+  images: GeneratedImage[]; 
+  pagination: any; 
+  loading: boolean; 
+  onLoadMore: () => void; 
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-white">My Assets</h2>
+        <p className="text-sm text-gray-400">Your generated images and creative assets</p>
+      </div>
+
+      <Card className="bg-gray-800/50 border-gray-700/50 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-white">
+            <ImageIcon className="h-4 w-4 text-purple-400" />
+            Generated Images
+          </CardTitle>
+          <CardDescription className="text-sm text-gray-400">
+            Browse and manage your AI-generated cat images
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loading && images.length === 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <Skeleton key={i} className="aspect-square rounded-lg bg-gray-700" />
+              ))}
+            </div>
+          ) : images.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {images.map((image) => (
+                  <div key={image.id} className="group relative overflow-hidden rounded-lg border border-gray-600/30 bg-gray-700/20">
+                    <img
+                      src={image.url}
+                      alt={image.prompt || 'Generated image'}
+                      className="aspect-square w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                      <p className="text-white text-xs font-medium line-clamp-2">
+                        {image.prompt || 'Generated Cat Image'}
+                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-white/80 text-xs">
+                          {new Date(image.createdAt).toLocaleDateString()}
+                        </span>
+                        {image.userRating && (
+                          <div className="flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            <span className="text-white/80 text-xs">{image.userRating}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {pagination.hasMore && (
+                <div className="text-center mt-4">
+                  <Button 
+                    onClick={onLoadMore} 
+                    disabled={loading}
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white"
+                  >
+                    {loading ? 'Loading...' : 'Load More Images'}
+                  </Button>
+                </div>
+              )}
+
+              <div className="text-center text-xs text-gray-400 mt-3">
+                Showing {images.length} of {pagination.total} images
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-6">
+              <ImageIcon className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+              <p className="text-sm text-gray-400">No images generated yet</p>
+              <p className="text-xs text-gray-500">Start creating your first cat image!</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 } 

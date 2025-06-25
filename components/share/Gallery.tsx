@@ -144,12 +144,12 @@ export function Gallery() {
   }
 
   return (
-    <section id="gallery" className="py-20">
+    <section className="py-20 bg-gray-900">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Stunning Artwork Showcase</h2>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Gallery</h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Explore amazing artworks created by users with our AI tools
+            Explore amazing AI-generated cat artworks created by our community
           </p>
         </div>
 
@@ -232,13 +232,13 @@ export function Gallery() {
                   size="sm"
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page <= 1}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 text-black"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Previous
                 </Button>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-black">
                   {/* 页码显示 */}
                   {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                     let pageNum
@@ -271,7 +271,7 @@ export function Gallery() {
                   size="sm"
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page >= pagination.totalPages}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 text-black"
                 >
                   Next
                   <ChevronRight className="w-4 h-4" />
@@ -280,11 +280,11 @@ export function Gallery() {
             )}
 
             {/* 分页信息 */}
-            <div className="text-center mt-4 text-gray-400 text-sm">
+            {/* <div className="text-center mt-4 text-gray-400 text-sm">
               Showing {((pagination.page - 1) * pagination.limit + 1)} to{' '}
               {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
               {pagination.total} images
-            </div>
+            </div> */}
           </>
         )}
 

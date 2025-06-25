@@ -1,74 +1,125 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Menu, Sparkles, Coins, User } from "lucide-react"
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Menu, User, Settings, LogOut } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
-import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs"
+import { SignInButton, SignUpButton, useUser, useClerk } from "@clerk/nextjs"
 import { usePoints } from "@/hooks/use-points"
 import { useRouter } from "next/navigation"
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { isSignedIn } = useUser()
+  const { isSignedIn, user } = useUser()
   const { points } = usePoints()
+  const { signOut } = useClerk()
   const router = useRouter()
 
+  const handleSignOut = () => {
+    signOut(() => router.push('/'))
+  }
+
+  // 获取用户名显示
+  const getUserDisplayName = () => {
+    if (!user) return "User"
+    return user.fullName || user.firstName || user.username || "User"
+  }
+
+  // 获取用户头像URL
+  const getUserAvatarUrl = () => {
+    return user?.imageUrl || ""
+  }
+
+  // 获取用户名首字母作为头像fallback
+  const getUserInitials = () => {
+    const name = getUserDisplayName()
+    return name.charAt(0).toUpperCase()
+  }
+
   return (
-    <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
       <div className="container mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold">Cat me</span>
+        <Link href="/" className="flex items-center space-x-1.5">
+          <img 
+            src="/catme_logo.png" 
+            alt="CatMe Logo" 
+            className="w-10 h-10 object-contain"
+          />
+          <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">CatMe</span>
         </Link>
 
         <nav className="hidden md:flex items-center space-x-8">
-          <Link href="#features" className="text-gray-300 hover:text-white transition-colors">
-            Features
+          <Link href="/" className="text-gray-300 hover:text-white transition-colors">
+            Home
           </Link>
-          <Link href="#gallery" className="text-gray-300 hover:text-white transition-colors">
+          <Link href="/gallery" className="text-gray-300 hover:text-white transition-colors">
             Gallery
           </Link>
-          <Link href="#how-to-use" className="text-gray-300 hover:text-white transition-colors">
-            How to Use
+          <Link href="/pricing" className="text-gray-300 hover:text-white transition-colors">
+            Pricing
           </Link>
-                      <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">
-              Pricing
-            </Link>
-            {isSignedIn && (
-              <Link href="/profile" className="text-gray-300 hover:text-white transition-colors">
-                Profile
-              </Link>
-            )}
-          </nav>
+        </nav>
 
         <div className="flex items-center space-x-4">
           {isSignedIn ? (
             <>
-              <div className="flex items-center space-x-2">
-                <Coins className="w-4 h-4 text-yellow-500" />
-                <span className="text-gray-300">{points}</span>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => router.push('/profile')}
-                className="hidden md:flex border-gray-500/50 text-gray-400 hover:text-gray-300"
-              >
-                <User className="w-4 h-4 mr-2" />
-                Profile
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => router.push('/pricing')}
-                className="hidden md:flex border-purple-500/50 text-purple-400 hover:text-purple-300"
-              >
-                充值
-              </Button>
-              <UserButton afterSignOutUrl="/" />
+              {/* 积分显示 */}
+              <span className="text-gray-300 text-sm">
+                credits: {points}
+              </span>
+              
+              {/* 用户头像下拉菜单 */}
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-gray-700/50 focus:bg-gray-700/50 data-[state=open]:bg-gray-700/50">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={getUserAvatarUrl()} alt={getUserDisplayName()} />
+                      <AvatarFallback className="bg-gray-600 text-white">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  className="w-56" 
+                  align="end" 
+                  sideOffset={8}
+                >
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {getUserDisplayName()}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.emailAddresses[0]?.emailAddress || ""}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>User Center</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/account')}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Admin System</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <div className="flex items-center space-x-4">
@@ -104,18 +155,36 @@ export function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden bg-black/90 border-b border-gray-800">
           <nav className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <Link href="#features" className="text-gray-300 hover:text-white transition-colors">
-              Features
+            <Link href="/" className="text-gray-300 hover:text-white transition-colors">
+              Home
             </Link>
-            <Link href="#gallery" className="text-gray-300 hover:text-white transition-colors">
+            <Link href="/gallery" className="text-gray-300 hover:text-white transition-colors">
               Gallery
             </Link>
-            <Link href="#how-to-use" className="text-gray-300 hover:text-white transition-colors">
-              How to Use
-            </Link>
-            <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">
+            <Link href="/pricing" className="text-gray-300 hover:text-white transition-colors">
               Pricing
             </Link>
+            {isSignedIn && (
+              <>
+                <div className="border-t border-gray-700 pt-4">
+                  <div className="text-gray-300 text-sm mb-2">
+                    credits: {points}
+                  </div>
+                  <Link href="/profile" className="text-gray-300 hover:text-white transition-colors block">
+                    User Center
+                  </Link>
+                  <Link href="/account" className="text-gray-300 hover:text-white transition-colors block mt-2">
+                    Admin System
+                  </Link>
+                  <button 
+                    onClick={handleSignOut}
+                    className="text-gray-300 hover:text-white transition-colors text-left mt-2"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </>
+            )}
           </nav>
         </div>
       )}
