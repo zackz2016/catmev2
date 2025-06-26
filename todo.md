@@ -156,6 +156,34 @@
 - 所有文字使用英文，提升国际化体验
 - 优化组件间距，提升视觉美观性
 
+## ✅ 双图像API支持 - 基于OpenAI官方SDK实现
+- **技术方案**：使用OpenAI官方SDK的标准images API，确保最佳兼容性
+- **实现内容**：
+  - 安装OpenAI官方SDK（`pnpm add openai`）
+  - 使用标准的images.generate() API进行图像生成
+  - 实现基于 `openai.images.generate()` 的标准调用方式
+  - 支持 `gpt-image-1` 模型，完整参数配置
+  - 统一API响应格式，添加provider字段标识API提供商
+  - 保持积分系统、用户认证、错误处理等逻辑完全一致
+- **环境变量配置**：
+  - Gemini API：`GEMINI_PROXY_URL`
+  - TUZI API：`TUZI_API_KEY` 和 `TUZI_API_BASE`
+- **切换方式**：
+  - 开发阶段：通过重命名文件快速切换API
+  - 生产环境：可通过环境变量或创建独立端点切换
+- **代码特点**：
+  - 使用OpenAI官方SDK的标准images API
+  - 模型为 `gpt-image-1`，支持1024x1024尺寸，base64返回格式
+  - 简洁的响应处理逻辑，支持base64和URL两种格式
+  - 添加调试日志记录响应结构
+  - 积分扣减原因标注API提供商信息
+- **优势**：
+  - 使用官方SDK确保最佳兼容性和稳定性
+  - 采用标准images API，代码简洁易维护
+  - 便于对比测试两个API的生成效果
+  - 提供备选方案，增强系统可靠性
+  - 遵循OpenAI官方最佳实践
+
 ## 待办事项
 ### 🔄 增加图片风格选择
     增加第4个问卷问题，提供9种图像风格选择
