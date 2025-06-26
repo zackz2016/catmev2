@@ -67,11 +67,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // 构建图片生成提示词
-    const imagePrompt = `Generate a stunning, high-quality, and artistically refined image of a ${prompt.breed} cat`+
-    `${prompt.style} style, emphasizing intricate details and vibrant colors.`+
-    `The cat should be ${prompt.pose} pose and with ${prompt.expression} expression, clearly conveying a ${prompt.personality} personality. `+
-    `The overall aesthetic should be exceptionally cute and charming.`;
+    // 构建增强版图片生成提示词
+    let imagePrompt = `Generate a stunning, high-quality, and artistically refined ${prompt.style} style image of a ${prompt.breed} cat, emphasizing intricate details and vibrant colors. `;
+    
+    // 添加姿势和表情描述
+    imagePrompt += `The cat should be in a ${prompt.pose} pose with a ${prompt.expression} expression, clearly conveying a ${prompt.personality} personality. `;
+    
+    // 添加环境和氛围描述（如果有的话）
+    if (prompt.environment) {
+      imagePrompt += `The scene should be set in a ${prompt.environment} environment. `;
+    }
+    
+    if (prompt.mood) {
+      imagePrompt += `The overall atmosphere should feel ${prompt.mood}. `;
+    }
+    
+    // 添加颜色和配饰描述（如果有的话）
+    if (prompt.color) {
+      imagePrompt += `Pay special attention to the ${prompt.color} color scheme. `;
+    }
+    
+    if (prompt.accessory) {
+      imagePrompt += `The cat should be wearing or accompanied by ${prompt.accessory}. `;
+    }
+    
+    // 结尾要求
+    imagePrompt += `The overall aesthetic should be exceptionally cute, charming, and visually appealing. Ensure the image captures the unique personality and charm of this specific cat character.`;
+
+    console.log('Generated image prompt:', imagePrompt);
 
     // 构建完整的反向代理URL
     const fullProxyUrl = `${GEMINI_PROXY_BASE_URL}/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent`;
@@ -105,7 +128,7 @@ export async function POST(request: Request) {
     for (const part of data.candidates[0].content.parts) {
       // Based on the part type, either show the text or save the image
       if (part.text) {
-        console.log(part.text);
+        console.log('Generated image description:', part.text);
       } else if (part.inlineData) {
         const imageData = part.inlineData.data; 
         imageUrl = `data:${part.inlineData.mimeType};base64,${imageData}`;
@@ -117,7 +140,7 @@ export async function POST(request: Request) {
             p_user_id: userId,
             p_amount: 1,
             p_type: 'SPEND',
-            p_reason: 'Generated cat image'
+            p_reason: 'Generated AI random quiz cat image'
           }
         );
 
@@ -129,7 +152,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ 
           imageUrl,
-          pointsRemaining: updatedPoints || (currentPoints - 1)
+          pointsRemaining: updatedPoints || (currentPoints - 1),
+          prompt: imagePrompt // 返回生成的prompt，用于调试
         });
       }
     }

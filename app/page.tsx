@@ -15,9 +15,9 @@ export default function Home() {
     <div className="pt-10">
       <Hero />
       {isSignedIn && <CatQuiz />}
-      {!isSignedIn && <HowToUse />}
+      {/* {!isSignedIn && <HowToUse />} */}
       {<Gallery />}
-      {!isSignedIn && <Pricing isSection />}
+      {/* {!isSignedIn && <Pricing isSection />} */}
     </div>
   )
 }

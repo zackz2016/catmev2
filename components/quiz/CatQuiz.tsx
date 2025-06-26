@@ -1,21 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { questions } from '@/data/quizData';
-import { UserAnswer, CatPrompt } from '@/types/quiz';
+import { useState, useEffect } from 'react';
+import { RandomQuestion, UserAnswer, CatPrompt, QuizGenerationResponse } from '@/types/quiz';
 import { useUser } from '@clerk/nextjs';
 import { SignInButton } from '@clerk/nextjs';
 import { usePoints } from '@/hooks/use-points';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { RefreshCw } from 'lucide-react';
 
 export default function CatQuiz() {
   const router = useRouter();
   const { isSignedIn } = useUser();
   const { points, updatePoints, refreshPoints } = usePoints();
   const { toast } = useToast();
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  
+  // 问卷状态
+  const [currentStage, setCurrentStage] = useState(1);
+  const [questions, setQuestions] = useState<RandomQuestion[]>([]);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [quizCompleted, setQuizCompleted] = useState(false);
@@ -24,54 +28,96 @@ export default function CatQuiz() {
   const [isSaving, setIsSaving] = useState(false);
   const [imageSaved, setImageSaved] = useState(false);
 
-  // 如果用户未登录，显示登录提示
-  // if (!isSignedIn) {
-  //   return (
-  //     <div className="max-w-4xl mx-auto space-y-6">
-  //       <div className="w-[512px] h-[512px] mx-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 overflow-hidden">
-  //         <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
-  //           <h2 className="text-2xl font-bold text-gray-800">
-  //             登录以开始测试
-  //           </h2>
-  //           <p className="text-gray-600">
-  //             登录后即可开始测试，生成专属于你的猫咪形象！
-  //           </p>
-  //           <SignInButton mode="modal">
-  //             <button className="px-6 py-3 bg-gradient-to-r from-purple-400/80 to-pink-400/80 text-white rounded-xl hover:from-purple-500/80 hover:to-pink-500/80 transition-all duration-200 shadow-md hover:shadow-lg">
-  //               立即登录
-  //             </button>
-  //           </SignInButton>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  // 组件加载时生成第一个问题
+  useEffect(() => {
+    if (isSignedIn) {
+      generateQuestion(1);
+    }
+  }, [isSignedIn]);
 
-  const handleAnswer = async (optionId: string) => {
+  // 生成随机问题
+  const generateQuestion = async (stage: number) => {
+    setIsLoadingQuestions(true);
+    try {
+      const response = await fetch('/api/generate-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage }),
+      });
+
+      if (!response.ok) {
+        throw new Error('生成问题失败');
+      }
+
+      const data: QuizGenerationResponse = await response.json();
+      
+      if (data.success) {
+        const newQuestions = [...questions];
+        newQuestions[stage - 1] = data.question;
+        setQuestions(newQuestions);
+        
+        // 如果是重新生成当前问题，显示提示
+        if (stage === currentStage && questions[stage - 1]) {
+          toast({
+            title: "问题已刷新",
+            description: "为你准备了新的选项！",
+          });
+        }
+      } else {
+        throw new Error('问题生成失败');
+      }
+    } catch (error) {
+      console.error('生成问题错误:', error);
+      toast({
+        title: "问题生成失败",
+        description: "请刷新页面重试",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingQuestions(false);
+    }
+  };
+
+  // 重新生成当前问题
+  const regenerateCurrentQuestion = async () => {
+    if (isLoadingQuestions) return;
+    await generateQuestion(currentStage);
+  };
+
+  const handleAnswer = async (optionIndex: number) => {
     // 检查积分是否足够
     if (points < 1) {
       toast({
         title: "积分不足",
         description: "您需要至少1积分才能生成猫咪图片",
       });
-      // 跳转到充值页面
       router.push('/pricing');
       return;
     }
 
-    const newAnswers = [...answers, { questionId: currentQuestion + 1, optionId }];
+    const newAnswers = [...answers, { 
+      questionId: currentStage, 
+      optionId: `${currentStage}-${optionIndex}` 
+    }];
     setAnswers(newAnswers);
 
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+    if (currentStage < 4) {
+      // 移动到下一阶段
+      const nextStage = currentStage + 1;
+      setCurrentStage(nextStage);
+      
+      // 如果下一个问题还没生成，则生成它
+      if (!questions[nextStage - 1]) {
+        await generateQuestion(nextStage);
+      }
     } else {
+      // 完成所有问题，开始生成图片
       setQuizCompleted(true);
-      await generateCatImage(newAnswers);
+      await generateCatImage(newAnswers, optionIndex);
     }
   };
 
-  const generateCatImage = async (finalAnswers: UserAnswer[]) => {
-    // 检查积分是否足够
+  const generateCatImage = async (finalAnswers: UserAnswer[], lastOptionIndex: number) => {
     if (points < 1) {
       toast({
         title: "积分不足",
@@ -82,14 +128,14 @@ export default function CatQuiz() {
     }
 
     setIsGenerating(true);
-    setImageSaved(false); // 重置保存状态
+    setImageSaved(false);
+    
     try {
-      const prompt = buildPrompt(finalAnswers);
-      const promptText = `Generate a ${prompt.style} style illustration of a ${prompt.breed} cat that is ${prompt.pose} with a ${prompt.expression} expression, showing a ${prompt.personality} personality.`;
-      setCurrentPrompt(promptText); // 保存当前提示词
+      const prompt = buildPrompt(finalAnswers, lastOptionIndex);
+      const promptText = `Generate a ${prompt.style} style illustration of a ${prompt.breed} cat that is ${prompt.pose} with a ${prompt.expression} expression, showing a ${prompt.personality} personality${prompt.environment ? ` in a ${prompt.environment} setting` : ''}${prompt.mood ? ` with a ${prompt.mood} atmosphere` : ''}.`;
+      setCurrentPrompt(promptText);
       
-      // 构建并保存猫咪描述文字
-      // 处理品种名称（取第一个品种）
+      // 构建猫咪描述文字
       const breedName = prompt.breed.includes('/') ? prompt.breed.split('/')[0] : prompt.breed;
       const description = `You are a ${prompt.personality} ${breedName} cat.`;
       setCatDescription(description);
@@ -117,7 +163,6 @@ export default function CatQuiz() {
           description: data.error || "您需要至少1积分来生成猫咪图片",
           variant: "destructive",
         });
-        // 刷新积分显示
         refreshPoints();
         return;
       }
@@ -128,7 +173,6 @@ export default function CatQuiz() {
       
       if (data.imageUrl) {
         setGeneratedImage(data.imageUrl);
-        // 刷新积分显示（API已经自动扣减了积分）
         refreshPoints();
         toast({
           title: "生成成功",
@@ -150,13 +194,29 @@ export default function CatQuiz() {
   };
 
   // 根据问卷答案构建Prompt
-  const buildPrompt = (finalAnswers: UserAnswer[]): CatPrompt => {
-    const attributes = finalAnswers.reduce((acc, answer) => {
-      const question = questions.find(q => q.id === answer.questionId);
-      const option = question?.options.find(o => o.id === answer.optionId);
-      return { ...acc, ...option?.attributes };
-    }, {} as CatPrompt);
-
+  const buildPrompt = (finalAnswers: UserAnswer[], lastOptionIndex: number): CatPrompt => {
+    const attributes: any = {};
+    
+    // 处理前3个问题的答案
+    finalAnswers.slice(0, -1).forEach((answer, index) => {
+      const question = questions[index];
+      if (question) {
+        const optionIndex = parseInt(answer.optionId.split('-')[1]);
+        const option = question.options[optionIndex];
+        if (option) {
+          Object.assign(attributes, option);
+        }
+      }
+    });
+    
+    // 处理最后一个问题的答案
+    const lastQuestion = questions[3];
+    if (lastQuestion) {
+      const lastOption = lastQuestion.options[lastOptionIndex];
+      if (lastOption) {
+        Object.assign(attributes, lastOption);
+      }
+    }
     
     return {
       pose: attributes.pose || 'sitting',
@@ -164,6 +224,8 @@ export default function CatQuiz() {
       breed: attributes.breed || 'mixed breed',
       expression: attributes.expression || 'neutral',
       style: attributes.style || 'watercolor',
+      environment: attributes.environment || 'cozy indoor',
+      mood: attributes.mood || 'warm',
     };
   };
 
@@ -179,8 +241,7 @@ export default function CatQuiz() {
 
     setIsSaving(true);
     try {
-      // 从当前答案中获取选择的图片风格
-      const prompt = buildPrompt(answers);
+      const prompt = buildPrompt(answers, parseInt(answers[answers.length - 1].optionId.split('-')[1]));
       const imageStyle = prompt.style || 'watercolor';
       
       const response = await fetch('/api/save-image', {
@@ -188,9 +249,9 @@ export default function CatQuiz() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           imageUrl: generatedImage,
-          prompt: catDescription, // 将猫咪描述作为prompt保存，这样图库会显示友好的描述而不是技术提示词
-          imageStyle: imageStyle, // 根据测试结果设置风格
-          isPublic: true, // 默认公开
+          prompt: catDescription,
+          imageStyle: imageStyle,
+          isPublic: true,
         }),
       });
 
@@ -217,25 +278,54 @@ export default function CatQuiz() {
     }
   };
 
-  const handleRestart = () => {
+  const handleRestart = async () => {
     if (points < 1) {
       toast({
         title: "积分不足",
         description: "您的积分已用完，请前往充值",
       });
-      // 跳转到充值页面
       router.push('/pricing');
       return;
     }
 
-    setCurrentQuestion(0);
+    // 重置所有状态
+    setCurrentStage(1);
+    setQuestions([]);
     setAnswers([]);
     setGeneratedImage(null);
     setQuizCompleted(false);
     setCurrentPrompt(null);
     setCatDescription(null);
     setImageSaved(false);
+    
+    // 生成新的第一个问题
+    await generateQuestion(1);
   };
+
+  // 如果用户未登录，显示登录提示
+  if (!isSignedIn) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="w-[512px] h-[512px] mx-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 overflow-hidden">
+          <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800">
+              登录以开始测试
+            </h2>
+            <p className="text-gray-600">
+              登录后即可开始AI随机问卷测试，每次都是全新体验！
+            </p>
+            <SignInButton mode="modal">
+              <button className="px-6 py-3 bg-gradient-to-r from-purple-400/80 to-pink-400/80 text-white rounded-xl hover:from-purple-500/80 hover:to-pink-500/80 transition-all duration-200 shadow-md hover:shadow-lg">
+                立即登录
+              </button>
+            </SignInButton>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentQuestion = questions[currentStage - 1];
 
   return (
     <>
@@ -244,7 +334,8 @@ export default function CatQuiz() {
         <div className="space-y-4">
           <div className="flex justify-center items-center">
             <h2 className="text-2xl font-bold text-white text-center">
-              {!quizCompleted ? questions[currentQuestion].title : 
+              {!quizCompleted ? 
+                (currentQuestion ? currentQuestion.title : '正在生成问题...') : 
                 (isGenerating ? '生成专属猫咪中...' : "🎨 你的专属猫咪")}
             </h2>
           </div>
@@ -254,14 +345,30 @@ export default function CatQuiz() {
               <div className="w-full bg-purple-100/30 h-2 rounded-full">
                 <div
                   className="bg-gradient-to-r from-purple-400/80 to-pink-400/80 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
+                  style={{ width: `${(currentStage / 4) * 100}%` }}
                 />
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <div className="text-white/70 text-sm">
+                  第 {currentStage} 步，共 4 步
+                </div>
+                {/* 重新生成问题按钮 */}
+                {currentQuestion && !isLoadingQuestions && (
+                  <button
+                    onClick={regenerateCurrentQuestion}
+                    className="flex items-center gap-1 text-white/70 hover:text-white text-sm transition-colors duration-200"
+                    title="重新生成问题"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    换一组
+                  </button>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* 猫咪描述文字 - 在图片上方显示 */}
+        {/* 猫咪描述文字 */}
         {quizCompleted && !isGenerating && catDescription && (
           <div className="w-[512px] mx-auto text-center animate-fade-in">
             <div className="bg-gradient-to-r from-purple-50/90 to-pink-50/90 backdrop-blur-sm rounded-xl p-6 border border-purple-200/50 shadow-lg transform hover:scale-[1.02] transition-all duration-300">
@@ -276,22 +383,39 @@ export default function CatQuiz() {
           </div>
         )}
 
-        {/* 固定尺寸的主容器 */}
+        {/* 主容器 */}
         <div className="w-[512px] h-[512px] mx-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 overflow-hidden">
           {!quizCompleted ? (
             // 问卷选项
             <div className="w-full h-full p-6">
-              <div className="grid grid-cols-3 gap-4 h-full">
-                {questions[currentQuestion].options.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => handleAnswer(option.id)}
-                    className="aspect-square p-4 bg-gradient-to-r from-purple-50/50 to-pink-50/50 border border-purple-100/30 rounded-xl text-left hover:from-purple-100/50 hover:to-pink-100/50 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-gray-700 hover:text-gray-900 flex items-center justify-center text-center"
-                  >
-                    {option.text}
-                  </button>
-                ))}
-              </div>
+              {isLoadingQuestions ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center space-y-4">
+                    <div className="relative w-16 h-16 mx-auto">
+                      <div className="absolute inset-0 rounded-full border-4 border-purple-100/30"></div>
+                      <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
+                    </div>
+                    <p className="text-gray-600">正在生成有趣的问题...</p>
+                  </div>
+                </div>
+              ) : currentQuestion ? (
+                <div className="grid grid-cols-2 gap-4 h-full">
+                  {currentQuestion.options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleAnswer(index)}
+                      className="p-4 bg-gradient-to-r from-purple-50/50 to-pink-50/50 border border-purple-100/30 rounded-xl text-left hover:from-purple-100/50 hover:to-pink-100/50 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-gray-700 hover:text-gray-900 flex items-center justify-center text-center"
+                    >
+                      {option.text}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <p className="text-gray-600">问题加载中...</p>
+                </div>
+              )}
+              
               {points < 1 && (
                 <div className="absolute bottom-6 left-6 right-6 text-center bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-purple-100/50 shadow-lg">
                   <p className="text-gray-800 font-medium mb-2">
@@ -316,8 +440,6 @@ export default function CatQuiz() {
                 <div className="relative w-24 h-24">
                   <div className="absolute inset-0 rounded-full border-4 border-purple-100/30"></div>
                   <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
-                  {/* <div className="absolute inset-4 rounded-full border-4 border-pink-100/30"></div>
-                  <div className="absolute inset-4 rounded-full border-4 border-t-pink-500 animate-spin animation-delay-150"></div> */}
                 </div>
               ) : (
                 generatedImage && (
@@ -332,7 +454,7 @@ export default function CatQuiz() {
           )}
         </div>
 
-        {/* 保存按钮和重新测试按钮 */}
+        {/* 操作按钮 */}
         {quizCompleted && !isGenerating && generatedImage && (
           <div className="w-[512px] mx-auto flex flex-col items-center gap-4 p-4">
             <div className="flex gap-4 w-full max-w-[400px]">
@@ -359,7 +481,7 @@ export default function CatQuiz() {
             {points < 1 && (
               <div className="w-full text-center bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-purple-100/50">
                 <p className="text-gray-600">
-                  您的积分已用完，充值后即可继续生成专属猫咪形象
+                  您的积分已用完，充值后即可继续体验全新的AI问卷测试
                 </p>
               </div>
             )}
