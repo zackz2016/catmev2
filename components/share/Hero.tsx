@@ -10,17 +10,16 @@ export function Hero() {
   const { isSignedIn } = useUser();
 
   return (
-    <section id="hero" className="pt-12 pb-2 bg-gray-900/50">
+    <section id="hero" className="pt-20 pb-5 bg-gray-900/50">
       <div className="container mx-auto px-4 mt-4">
         <div className="text-center mb-16">
-          <h1 className="text-3xl md:text-6xl font-bold mb-4">Your AI Cat Personality in a Picture</h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
-            Experience next-generation AI image generation technology, providing unlimited possibilities for your
-            creative projects
+          <h1 className="text-3xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-500 via-purple-600 to-pink-500 bg-clip-text text-transparent font-mono tracking-wide">Your AI Cat Personality in a Picture</h1>
+          <p className="text-gray-400 text-2xl max-w-2xl mx-auto mb-8 font-mono tracking-wide">
+            Complete 4 quiz questions to generate your exclusive cat picture
           </p>
           
           {/* 只有未注册用户才显示Start for free按钮 */}
-          {!isSignedIn && (
+          {/* {!isSignedIn && (
             <div className="flex justify-center">
               <SignInButton mode="modal">
                 <Button 
@@ -31,7 +30,7 @@ export function Hero() {
                 </Button>
               </SignInButton>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </section>

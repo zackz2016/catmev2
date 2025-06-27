@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation"
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { isSignedIn, user } = useUser()
-  const { points } = usePoints()
+  const { points, updatePoints, refreshPoints } = usePoints()
   const { signOut } = useClerk()
   const router = useRouter()
 
@@ -73,9 +73,12 @@ export function Navbar() {
           {isSignedIn ? (
             <>
               {/* 积分显示 */}
-              <span className="text-gray-300 text-sm">
-                credits: {points}
-              </span>
+              <div className="text-sm">
+                <span className="text-gray-400">Credits: </span>
+                <span className="font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  {points}
+                </span>
+              </div>
               
               {/* 用户头像下拉菜单 */}
               <DropdownMenu modal={false}>
@@ -167,8 +170,11 @@ export function Navbar() {
             {isSignedIn && (
               <>
                 <div className="border-t border-gray-700 pt-4">
-                  <div className="text-gray-300 text-sm mb-2">
-                    credits: {points}
+                  <div className="text-sm mb-2">
+                    <span className="text-gray-400">Credits: </span>
+                    <span className="font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                      {points}
+                    </span>
                   </div>
                   <Link href="/profile" className="text-gray-300 hover:text-white transition-colors block">
                     User Center

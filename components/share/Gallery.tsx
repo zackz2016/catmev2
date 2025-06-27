@@ -144,11 +144,11 @@ export function Gallery() {
   }
 
   return (
-    <section className="py-20 bg-gray-900">
+    <section className="py-20 pt-40 bg-gray-900">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Gallery</h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 font-mono">Gallery</h1>
+          <p className="text-gray-400 text-lg max-w-2xl mx-auto font-mono">
             Explore amazing AI-generated cat artworks created by our community
           </p>
         </div>

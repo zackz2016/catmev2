@@ -26,10 +26,8 @@ const stageConfig = {
 export async function POST(request: NextRequest) {
   try {
     const { userId } = getAuth(request);
-    
-    if (!userId) {
-      return NextResponse.json({ error: '需要登录' }, { status: 401 });
-    }
+    // 注意：移除登录检查，支持未注册用户免费体验
+    // 未注册用户也应该能够生成问题，然后使用访客试用系统生成图片
 
     const { stage } = await request.json();
     

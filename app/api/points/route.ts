@@ -30,7 +30,7 @@ export async function GET(request: Request) {
         const { data: newPoints, error: createError } = await supabase
           .from('user_points')
           .insert([
-            { user_id: userId, points: 1 } // 新注册用户获得1积分
+            { user_id: userId, points: 3 } // 新注册用户获得3积分
           ])
           .select()
           .single();

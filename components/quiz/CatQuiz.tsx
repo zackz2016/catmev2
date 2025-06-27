@@ -5,14 +5,18 @@ import { RandomQuestion, UserAnswer, CatPrompt, QuizGenerationResponse } from '@
 import { useUser } from '@clerk/nextjs';
 import { SignInButton } from '@clerk/nextjs';
 import { usePoints } from '@/hooks/use-points';
+import { useGuestTrial } from '@/hooks/use-guest-trial';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Gift } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function CatQuiz() {
   const router = useRouter();
   const { isSignedIn } = useUser();
   const { points, updatePoints, refreshPoints } = usePoints();
+  const guestTrial = useGuestTrial();
   const { toast } = useToast();
   
   // 问卷状态
@@ -30,10 +34,8 @@ export default function CatQuiz() {
 
   // 组件加载时生成第一个问题
   useEffect(() => {
-    if (isSignedIn) {
-      generateQuestion(1);
-    }
-  }, [isSignedIn]);
+    generateQuestion(1);
+  }, []);
 
   // 生成随机问题
   const generateQuestion = async (stage: number) => {
@@ -85,16 +87,6 @@ export default function CatQuiz() {
   };
 
   const handleAnswer = async (optionIndex: number) => {
-    // 检查积分是否足够
-    if (points < 1) {
-      toast({
-        title: "积分不足",
-        description: "您需要至少1积分才能生成猫咪图片",
-      });
-      router.push('/pricing');
-      return;
-    }
-
     const newAnswers = [...answers, { 
       questionId: currentStage, 
       optionId: `${currentStage}-${optionIndex}` 
@@ -111,6 +103,27 @@ export default function CatQuiz() {
         await generateQuestion(nextStage);
       }
     } else {
+      // 完成所有问题，在生成图片前检查权限
+      // 检查是否可以生成图片（注册用户检查积分，访客检查试用次数）
+      if (isSignedIn) {
+        if (points < 1) {
+          toast({
+            title: "积分不足",
+            description: "您需要至少1积分才能生成猫咪图片",
+          });
+          router.push('/pricing');
+          return;
+        }
+      } else {
+        if (!guestTrial.canUse) {
+          toast({
+            title: "免费体验已用完",
+            description: "注册后可获得3次免费生成机会",
+          });
+          return;
+        }
+      }
+      
       // 完成所有问题，开始生成图片
       setQuizCompleted(true);
       await generateCatImage(newAnswers, optionIndex);
@@ -118,13 +131,18 @@ export default function CatQuiz() {
   };
 
   const generateCatImage = async (finalAnswers: UserAnswer[], lastOptionIndex: number) => {
-    if (points < 1) {
-      toast({
-        title: "积分不足",
-        description: "请先充值",
-        variant: "destructive",
-      });
-      return;
+    // 对于访客，消费试用次数
+    if (!isSignedIn) {
+      const success = guestTrial.consumeTrial();
+      
+      if (!success) {
+        toast({
+          title: "免费体验已用完",
+          description: "注册后可获得更多生成机会",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsGenerating(true);
@@ -132,6 +150,7 @@ export default function CatQuiz() {
     
     try {
       const prompt = buildPrompt(finalAnswers, lastOptionIndex);
+      
       const promptText = `Generate a ${prompt.style} style illustration of a ${prompt.breed} cat that is ${prompt.pose} with a ${prompt.expression} expression, showing a ${prompt.personality} personality${prompt.environment ? ` in a ${prompt.environment} setting` : ''}${prompt.mood ? ` with a ${prompt.mood} atmosphere` : ''}.`;
       setCurrentPrompt(promptText);
       
@@ -147,6 +166,15 @@ export default function CatQuiz() {
       });
       
       const data = await response.json();
+      
+      if (response.status === 429) {
+        toast({
+          title: "免费体验已用完",
+          description: data.error || "注册后可获得更多生成机会",
+          variant: "destructive",
+        });
+        return;
+      }
       
       if (response.status === 401) {
         toast({
@@ -173,11 +201,19 @@ export default function CatQuiz() {
       
       if (data.imageUrl) {
         setGeneratedImage(data.imageUrl);
-        refreshPoints();
-        toast({
-          title: "生成成功",
-          description: `图片已生成，剩余积分：${data.pointsRemaining || (points - 1)}`,
-        });
+        
+        if (data.isGuestMode) {
+          toast({
+            title: "生成成功！",
+            description: "免费体验已使用，注册后可获得更多次数",
+          });
+        } else {
+          refreshPoints();
+          toast({
+            title: "生成成功",
+            description: `图片已生成，剩余积分：${data.pointsRemaining || (points - 1)}`,
+          });
+        }
       } else {
         throw new Error('No image returned from API');
       }
@@ -198,74 +234,52 @@ export default function CatQuiz() {
     const attributes: any = {};
     
     // 处理前3个问题的答案
-    finalAnswers.slice(0, -1).forEach((answer, index) => {
+    finalAnswers.forEach((answer, index) => {
       const question = questions[index];
       if (question) {
-        const optionIndex = parseInt(answer.optionId.split('-')[1]);
-        const option = question.options[optionIndex];
-        if (option) {
-          Object.assign(attributes, option);
-        }
+        const selectedOption = question.options[parseInt(answer.optionId.split('-')[1])];
+        // RandomQuizOption直接包含属性，不是嵌套在attributes中
+        Object.assign(attributes, selectedOption);
       }
     });
     
-    // 处理最后一个问题的答案
+    // 处理第4个问题的答案
     const lastQuestion = questions[3];
     if (lastQuestion) {
-      const lastOption = lastQuestion.options[lastOptionIndex];
-      if (lastOption) {
-        Object.assign(attributes, lastOption);
-      }
+      const selectedOption = lastQuestion.options[lastOptionIndex];
+      Object.assign(attributes, selectedOption);
     }
     
-    return {
-      pose: attributes.pose || 'sitting',
-      personality: attributes.personality || 'calm',
-      breed: attributes.breed || 'mixed breed',
-      expression: attributes.expression || 'neutral',
-      style: attributes.style || 'watercolor',
-      environment: attributes.environment || 'cozy indoor',
-      mood: attributes.mood || 'warm',
-    };
+    return attributes as CatPrompt;
   };
 
+  // 保存图片到图库
   const saveImageToGallery = async () => {
-    if (!generatedImage || !currentPrompt) {
-      toast({
-        title: "保存失败",
-        description: "没有可保存的图片",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!generatedImage || !currentPrompt || isSaving) return;
 
     setIsSaving(true);
     try {
-      const prompt = buildPrompt(answers, parseInt(answers[answers.length - 1].optionId.split('-')[1]));
-      const imageStyle = prompt.style || 'watercolor';
-      
       const response = await fetch('/api/save-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           imageUrl: generatedImage,
-          prompt: catDescription,
-          imageStyle: imageStyle,
-          isPublic: true,
+          prompt: currentPrompt,
+          isPublic: true
         }),
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
+      
+      if (response.ok && data.success) {
+        setImageSaved(true);
+        toast({
+          title: "保存成功",
+          description: "图片已保存到您的图库",
+        });
+      } else {
         throw new Error(data.error || 'Failed to save image');
       }
-
-      setImageSaved(true);
-      toast({
-        title: "保存成功",
-        description: "图片已保存到画廊",
-      });
     } catch (error) {
       console.error('Error saving image:', error);
       toast({
@@ -278,17 +292,8 @@ export default function CatQuiz() {
     }
   };
 
+  // 重新开始测试
   const handleRestart = async () => {
-    if (points < 1) {
-      toast({
-        title: "积分不足",
-        description: "您的积分已用完，请前往充值",
-      });
-      router.push('/pricing');
-      return;
-    }
-
-    // 重置所有状态
     setCurrentStage(1);
     setQuestions([]);
     setAnswers([]);
@@ -298,196 +303,202 @@ export default function CatQuiz() {
     setCatDescription(null);
     setImageSaved(false);
     
-    // 生成新的第一个问题
     await generateQuestion(1);
   };
 
-  // 如果用户未登录，显示登录提示
-  if (!isSignedIn) {
+  // 未注册用户的状态提示
+  const renderGuestStatus = () => {
+    if (isSignedIn) return null;
+    
+    if (!guestTrial.canUse) {
+      return (
+        <Alert className="mb-6 bg-red-500/10 border-red-500/20">
+          <Gift className="h-4 w-4" />
+          <AlertDescription>
+            <span className="font-medium">免费体验已用完：</span>
+            <span className="text-red-400">剩余 {guestTrial.remaining} 次</span>
+            <span className="ml-2 text-gray-400">
+              · 注册后可获得3次免费生成机会
+            </span>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="w-[512px] h-[512px] mx-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 overflow-hidden">
-          <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              登录以开始测试
-            </h2>
-            <p className="text-gray-600">
-              登录后即可开始AI随机问卷测试，每次都是全新体验！
-            </p>
-            <SignInButton mode="modal">
-              <button className="px-6 py-3 bg-gradient-to-r from-purple-400/80 to-pink-400/80 text-white rounded-xl hover:from-purple-500/80 hover:to-pink-500/80 transition-all duration-200 shadow-md hover:shadow-lg">
-                立即登录
-              </button>
-            </SignInButton>
-          </div>
+      <Alert className="mb-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20">
+        <Gift className="h-4 w-4" />
+        <AlertDescription>
+          <span className="font-medium">免费体验：</span>
+          <span className="text-green-400">还可以生成 {guestTrial.remaining} 次</span>
+          <span className="ml-2 text-gray-400">
+            · 注册后可获得3次免费生成机会
+          </span>
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
+  // 如果是已注册用户但没有积分，显示购买提示
+  if (isSignedIn && points < 1 && !isGenerating && !generatedImage) {
+    return (
+      <section className="max-w-4xl mx-auto p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">积分不足</h2>
+          <p className="text-gray-400 mb-6">您需要至少1积分才能生成猫咪图片</p>
+          <Button 
+            onClick={() => router.push('/pricing')}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+          >
+            获取积分
+          </Button>
         </div>
-      </div>
+      </section>
     );
   }
 
-  const currentQuestion = questions[currentStage - 1];
+  // 如果是未注册用户且没有试用次数，显示注册提示
+  if (!isSignedIn && !guestTrial.canUse && !isGenerating && !generatedImage) {
+    return (
+      <section className="max-w-4xl mx-auto p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">免费体验已用完</h2>
+          <p className="text-gray-400 mb-6">注册后可获得3次免费生成机会</p>
+          <SignInButton mode="modal">
+            <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+              立即注册
+            </Button>
+          </SignInButton>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* 标题和进度条 */}
-        <div className="space-y-4">
-          <div className="flex justify-center items-center">
-            <h2 className="text-2xl font-bold text-white text-center">
-              {!quizCompleted ? 
-                (currentQuestion ? currentQuestion.title : '正在生成问题...') : 
-                (isGenerating ? '生成专属猫咪中...' : "🎨 你的专属猫咪")}
-            </h2>
+    <section className="max-w-4xl mx-auto p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 ">
+      {/* {renderGuestStatus()} */}
+      
+      {/* 显示积分或试用状态 */}
+      {!(isSignedIn && points < 1) && !quizCompleted && !generatedImage && (
+        <div className="text-center mb-6 pb-10">
+   
+          {/* 进度条 */}
+          <div className="max-w mx-auto">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">Progress</span>
+              <span className="text-sm text-gray-400">{currentStage}/4</span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2">
+              <div 
+                className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${(currentStage / 4) * 100}%` }}
+              ></div>
+            </div>
+ 
+          </div>
+        </div>
+      )}
+
+      {/* 测试完成后显示结果 */}
+      {quizCompleted && generatedImage && (
+        <div className="text-center mb-8">
+          {catDescription && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-2xl">🐱</span>
+                <h3 className="text-lg font-semibold text-white">Your Cat Personality</h3>
+              </div>
+              <p className="text-purple-300 text-base font-medium">{catDescription}</p>
+              <div className="w-16 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 mx-auto mt-3 rounded-full"></div>
+            </div>
+          )}
+          
+          <div className="mb-6">
+            <img 
+              src={generatedImage} 
+              alt="Generated Cat" 
+              className="max-w-full h-auto rounded-lg shadow-lg mx-auto animate-fade-in"
+              style={{ maxHeight: '500px' }}
+            />
           </div>
           
-          {!quizCompleted && (
-            <div className="w-full max-w-[512px] mx-auto">
-              <div className="w-full bg-purple-100/30 h-2 rounded-full">
-                <div
-                  className="bg-gradient-to-r from-purple-400/80 to-pink-400/80 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(currentStage / 4) * 100}%` }}
-                />
-              </div>
-              <div className="flex justify-between items-center mt-2">
-                <div className="text-white/70 text-sm">
-                  第 {currentStage} 步，共 4 步
-                </div>
-                {/* 重新生成问题按钮 */}
-                {currentQuestion && !isLoadingQuestions && (
-                  <button
-                    onClick={regenerateCurrentQuestion}
-                    className="flex items-center gap-1 text-white/70 hover:text-white text-sm transition-colors duration-200"
-                    title="重新生成问题"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    换一组
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 猫咪描述文字 */}
-        {quizCompleted && !isGenerating && catDescription && (
-          <div className="w-[512px] mx-auto text-center animate-fade-in">
-            <div className="bg-gradient-to-r from-purple-50/90 to-pink-50/90 backdrop-blur-sm rounded-xl p-6 border border-purple-200/50 shadow-lg transform hover:scale-[1.02] transition-all duration-300">
-              <div className="flex items-center justify-center mb-2">
-                <span className="text-2xl">🐱</span>
-              </div>
-              <p className="text-xl font-semibold text-gray-800 italic leading-relaxed">
-                "{catDescription}"
-              </p>
-              <div className="mt-2 w-16 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 mx-auto rounded-full"></div>
-            </div>
-          </div>
-        )}
-
-        {/* 主容器 */}
-        <div className="w-[512px] h-[512px] mx-auto bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 overflow-hidden">
-          {!quizCompleted ? (
-            // 问卷选项
-            <div className="w-full h-full p-6">
-              {isLoadingQuestions ? (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <div className="relative w-16 h-16 mx-auto">
-                      <div className="absolute inset-0 rounded-full border-4 border-purple-100/30"></div>
-                      <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
-                    </div>
-                    <p className="text-gray-600">正在生成有趣的问题...</p>
-                  </div>
-                </div>
-              ) : currentQuestion ? (
-                <div className="grid grid-cols-2 gap-4 h-full">
-                  {currentQuestion.options.map((option, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleAnswer(index)}
-                      className="p-4 bg-gradient-to-r from-purple-50/50 to-pink-50/50 border border-purple-100/30 rounded-xl text-left hover:from-purple-100/50 hover:to-pink-100/50 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] text-gray-700 hover:text-gray-900 flex items-center justify-center text-center"
-                    >
-                      {option.text}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <p className="text-gray-600">问题加载中...</p>
-                </div>
-              )}
-              
-              {points < 1 && (
-                <div className="absolute bottom-6 left-6 right-6 text-center bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-purple-100/50 shadow-lg">
-                  <p className="text-gray-800 font-medium mb-2">
-                    需要1积分才能生成猫咪图片
-                  </p>
-                  <p className="text-gray-600 text-sm mb-4">
-                    充值后即可获得专属于你的猫咪形象
-                  </p>
-                  <button
-                    onClick={() => router.push('/pricing')}
-                    className="px-6 py-2 bg-gradient-to-r from-purple-400/80 to-pink-400/80 text-white rounded-lg hover:from-purple-500/80 hover:to-pink-500/80 transition-all duration-200 shadow-md hover:shadow-lg"
-                  >
-                    立即充值
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            // 生成结果展示
-            <div className="w-full h-full flex items-center justify-center">
-              {isGenerating ? (
-                <div className="relative w-24 h-24">
-                  <div className="absolute inset-0 rounded-full border-4 border-purple-100/30"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin"></div>
-                </div>
-              ) : (
-                generatedImage && (
-                  <img
-                    src={generatedImage}
-                    alt="Generated cat"
-                    className="w-full h-full object-contain"
-                  />
-                )
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 操作按钮 */}
-        {quizCompleted && !isGenerating && generatedImage && (
-          <div className="w-[512px] mx-auto flex flex-col items-center gap-4 p-4">
-            <div className="flex gap-4 w-full max-w-[400px]">
-              <button
+          <div className="flex gap-4 justify-center flex-wrap">
+            {isSignedIn && (
+              <Button
                 onClick={saveImageToGallery}
                 disabled={isSaving || imageSaved}
-                className={`flex-1 px-6 py-3 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg ${
-                  imageSaved 
-                    ? 'bg-green-500/80 text-white cursor-default' 
-                    : isSaving
-                    ? 'bg-gray-400/80 text-white cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-400/80 to-cyan-400/80 text-white hover:from-blue-500/80 hover:to-cyan-500/80'
-                }`}
+                variant="outline"
+                className="border-purple-500/50 hover:bg-purple-500/10 text-purple-500 hover:text-white disabled:text-gray-300"
               >
-                {isSaving ? '保存中...' : imageSaved ? '已保存' : '保存到画廊'}
-              </button>
-              <button
-                onClick={handleRestart}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-400/80 to-pink-400/80 text-white rounded-xl hover:from-purple-500/80 hover:to-pink-500/80 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                {points < 1 ? '前往充值' : '重新开始'}
-              </button>
-            </div>
-            {points < 1 && (
-              <div className="w-full text-center bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-purple-100/50">
-                <p className="text-gray-600">
-                  您的积分已用完，充值后即可继续体验全新的AI问卷测试
-                </p>
-              </div>
+                {isSaving ? "Saving..." : imageSaved ? "Saved" : "Save to Gallery"}
+              </Button>
+            )}
+            
+            <Button
+              onClick={handleRestart}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            >
+              Take Another Test
+            </Button>
+
+            {!isSignedIn && (
+              <SignInButton mode="modal">
+                <Button variant="outline" className="border-green-500/50 text-purple-500 hover:bg-green-500/10">
+                  Sign Up for More
+                </Button>
+              </SignInButton>
             )}
           </div>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+
+      {/* 生成中状态 */}
+      {isGenerating && (
+        <div className="text-center py-12">
+          <div className="inline-flex items-center gap-3 mb-4">
+            <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-lg">Generating your cat personality...</span>
+          </div>
+          <p className="text-gray-400">This may take a few moments</p>
+        </div>
+      )}
+
+      {/* 问题显示 */}
+      {!quizCompleted && !isGenerating && questions[currentStage - 1] && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <h3 className="text-2xl font-semibold mb-3 text-white text-center">
+                {questions[currentStage - 1].title}
+              </h3>
+            </div>
+          </div>
+          
+          <div className="grid gap-3 md:grid-cols-2">
+            {questions[currentStage - 1].options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswer(index)}
+                className="p-4 text-left bg-gray-700/30 hover:bg-gray-700/50 rounded-lg border border-gray-600/50 hover:border-purple-500/50 transition-all duration-200 group"
+              >
+                <div className="font-medium text-white group-hover:text-purple-300 transition-colors">
+                  {option.text}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 加载状态 */}
+      {isLoadingQuestions && (
+        <div className="text-center py-8">
+          <div className="inline-flex items-center gap-2 text-gray-400">
+            <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <span>Loading questions...</span>
+          </div>
+        </div>
+      )}
+    </section>
   );
 } 

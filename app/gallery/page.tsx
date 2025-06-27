@@ -5,7 +5,7 @@ import { Gallery } from "@/components/share/Gallery"
 
 export default function GalleryPage() {
   return (
-    <div className="min-h-screen bg-gray-900 pt-16">
+    <div className="min-h-screen bg-gray-900">
       <Gallery />
     </div>
   )

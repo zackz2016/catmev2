@@ -14,10 +14,8 @@ export default function Home() {
   return (
     <div className="pt-10">
       <Hero />
-      {isSignedIn && <CatQuiz />}
-      {/* {!isSignedIn && <HowToUse />} */}
-      {<Gallery />}
-      {/* {!isSignedIn && <Pricing isSection />} */}
+      <CatQuiz />
+      <Gallery />      
     </div>
   )
 }
