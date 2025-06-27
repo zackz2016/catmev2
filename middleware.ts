@@ -13,7 +13,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/generate-quiz',
   '/api/points',
   '/api/images(.*)', // 允许未注册用户访问图库API
-  '/api/webhooks/clerk'
+  '/api/webhooks/clerk',
+  '/api/webhooks/creem'
 ])
 
 export default clerkMiddleware(async (auth, req) => {

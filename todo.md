@@ -1,5 +1,31 @@
 # 当前开发步骤
 
+## ✅ Creem Webhook数据结构修复 - 解决支付事件处理问题
+- **问题描述**：webhook处理代码与Creem实际响应数据结构不匹配，导致支付事件无法正确处理
+- **主要问题**：
+  - 事件类型字段错误：代码中使用`event.type`，实际应为`event.eventType`
+  - 数据路径错误：代码中使用`event.data`，实际数据在`event.object`中
+  - 字段映射错误：checkout_id、order_id、amount等字段路径不正确
+- **修复内容**：
+  - 更新事件类型检查：`event.eventType === 'checkout.completed'`
+  - 修正数据解构路径：
+    - `checkout_id = event.object.id`
+    - `order_id = event.object.order.id`
+    - `amount = event.object.order.amount`
+    - `currency = event.object.order.currency`
+    - `metadata = event.object.metadata`
+  - 更新日志输出字段名称，便于调试
+- **验证数据**：根据实际Creem webhook响应结构进行验证
+  - 事件类型：`"checkout.completed"`
+  - checkout ID：`"ch_Oiq7z9SQ8zU4BMGVNGy4r"`
+  - order ID：`"ord_47wgrgfMSEi6nf2MhCLjLg"`
+  - 金额：`499` (USD)
+  - 用户metadata：`planId: "standard"`, `userId: "user_2ydSy7jD8Swfy1F4JuCSIOCxHyD"`
+- **技术影响**：
+  - 修复后webhook能正确解析支付事件
+  - 支付记录创建和积分分配功能恢复正常
+  - 确保支付成功页面的状态查询能获得正确结果
+
 ## ✅ Supabase MCP官方服务器连接 - AI助手数据库直连
 - **核心功能**：配置官方Supabase MCP服务器，让AI助手能够直接与Supabase项目交互
 - **技术实现**：
@@ -177,6 +203,42 @@
   - 社交传播价值高，朋友间会分享不同的有趣问题
   - 为产品差异化竞争提供核心优势
   - 可收集用户偏好数据，持续优化问题质量
+
+## ✅ Webhook支付系统重构 - 解决支付记录和页面跳转问题
+- **核心问题解决**：在Creem会话窗口完成支付后，数据库没有支付记录，页面不能自动跳转回主页
+- **实施方案**：采用方案2 - 添加Webhook端点和重试机制，符合支付行业最佳实践
+- **技术架构升级**：
+  - **新增Webhook端点** (`app/api/webhooks/creem/route.ts`)：处理Creem支付通知，包含HMAC签名验证
+  - **重构支付验证API** (`app/api/payment/verify/route.ts`)：简化逻辑，专注于状态查询，移除冗余签名验证
+  - **优化支付成功页面** (`app/payment/success/page.tsx`)：添加智能重试机制，改进用户体验
+  - **删除冗余代码**：移除 `lib/creem-utils.ts` 文件，清理不必要的签名验证逻辑
+- **Webhook特性**：
+  - **HMAC签名验证**：使用SHA256算法确保webhook来源可信
+  - **事件处理**：支持 `payment.succeeded` 和 `checkout.completed` 事件
+  - **防重复处理**：数据库约束防止重复支付记录
+  - **错误处理**：完善的错误日志和状态跟踪
+- **支付流程优化**：
+  - **双重确认机制**：Webhook创建记录 + 前端状态验证
+  - **智能重试**：支付成功页面最多重试6次（30秒），5秒间隔
+  - **状态管理**：区分pending和completed状态，优化用户提示
+  - **自动跳转**：5秒倒计时后自动跳转，支持手动跳转
+- **可靠性提升**：
+  - **Webhook保障**：即使用户关闭页面也能记录支付
+  - **实时处理**：支付完成后立即创建数据库记录
+  - **容错机制**：网络错误时自动重试，避免数据丢失
+- **配置文档**：
+  - 创建 `WEBHOOK_SETUP.md` 详细说明配置步骤
+  - 环境变量：`CREEM_WEBHOOK_SECRET` 用于签名验证
+  - 本地测试：支持ngrok隧道进行开发调试
+- **代码简化**：
+  - 移除冗余的签名验证逻辑（前端不再需要）
+  - 简化支付验证API，专注核心功能
+  - 统一错误处理和日志格式
+- **用户体验**：
+  - 更直观的支付状态提示
+  - 智能重试避免假失败
+  - 积分到账状态实时显示
+  - 5秒倒计时自动跳转，无需用户等待
 
 ## ✅ Navbar和Footer共享组件优化 - 全站布局统一
 - **实施方案**：采用根布局（Root Layout）集成方式，在 `app/layout.tsx` 中统一添加导航栏和页脚

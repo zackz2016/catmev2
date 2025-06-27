@@ -12,15 +12,15 @@ const creem = new Creem({
 const PRODUCT_CONFIGS = {
   standard: {
     productId: 'prod_6V0v4XYAsIOchRYysXCGFj',
-    name: 'Catme-standard',
+    name: 'Catme Standard',
     description: '标准版套餐',
-    price: 499 // 4.99 USD
+    price: 4.99 // 4.99 USD
   },
   super: {
     productId: 'prod_5IdqdarRl3jrwF8WcyeH6J',
-    name: 'Catme-super',
+    name: 'Catme Super',
     description: '超级版套餐',
-    price: 999 // 9.99 USD
+    price: 9.99 // 9.99 USD
   }
 };
 
