@@ -1,5 +1,73 @@
 # 当前开发步骤
 
+## ✅ Supabase MCP官方服务器连接 - AI助手数据库直连
+- **核心功能**：配置官方Supabase MCP服务器，让AI助手能够直接与Supabase项目交互
+- **技术实现**：
+  - 创建MCP配置文件 (`.cursor/mcp.json`)，使用最新的官方Supabase MCP服务器
+  - 配置只读模式和项目范围限制，确保安全性
+  - 编写详细的设置文档 (`MCP_SETUP.md`)，包含完整的配置步骤
+- **安全特性**：
+  - **只读模式**：使用 `--read-only` 参数防止意外的数据库写操作
+  - **项目范围限制**：使用 `--project-ref` 限制访问到特定项目
+  - **PAT令牌认证**：通过个人访问令牌进行安全身份验证
+- **可用功能**：
+  - **数据库操作**：列出表结构、执行SQL查询、查看扩展和迁移、生成TypeScript类型
+  - **项目管理**：获取项目配置、查看日志监控、获取API密钥和URL
+  - **开发支持**：管理Edge Functions、查看存储配置、访问文档
+- **用户体验提升**：
+  - AI助手可以直接了解数据库结构，无需手动提供上下文
+  - 支持实时查询和数据分析
+  - 自动生成TypeScript类型定义
+- **技术优势**：
+  - 使用官方维护的MCP服务器，稳定性和兼容性更好
+  - 支持20+种数据库和项目管理工具
+  - 自动更新到最新版本 (`@latest`)
+  - 配置简单，一次设置长期使用
+
+## ✅ Vertex AI Imagen集成 - 渐进式升级方案实施完成
+- **核心功能**：为Standard和Super套餐用户提供Vertex AI Imagen 3.0高质量图片生成服务，Free套餐继续使用现有反向代理API
+- **方案特点**：
+  - **渐进式升级**：保持现有Free plan用户体验不变，逐步升级付费用户
+  - **智能降级**：Vertex AI不可用时自动回退到代理API，确保服务可用性
+  - **套餐感知**：根据用户支付记录自动检测套餐等级，动态选择API
+- **技术实现**：
+  - 安装依赖：`@google-cloud/vertexai` 和 `google-auth-library`
+  - 创建Vertex AI服务模块 (`lib/image-generator/vertex-imagen.ts`)
+  - 创建套餐检测器 (`lib/image-generator/plan-detector.ts`)
+  - 重构图片生成API (`app/api/generate-cat/route.ts`)，支持双API模式
+- **API选择逻辑**：
+  - **Free Plan**：使用Gemini反向代理API（访客用户、无付费记录用户）
+  - **Standard Plan**：使用Vertex AI Imagen 3.0官方API
+  - **Super Plan**：使用Vertex AI Imagen 3.0官方API（优先队列）
+  - **故障回退**：Vertex AI不可用时所有用户都使用代理API
+- **Vertex AI特性**：
+  - **Imagen 3.0模型**：最新的图片生成技术
+  - **提示词增强**：`enhancePrompt: true` 自动优化提示词
+  - **安全设置**：`safetySetting: 'block_medium_and_above'`
+  - **专注猫咪**：`personGeneration: 'dont_allow'` 确保只生成猫咪
+  - **高质量输出**：1:1比例，PNG格式，90%压缩质量
+- **环境配置**：
+  - 新增环境变量：`GOOGLE_CLOUD_PROJECT_ID`、`GOOGLE_CLOUD_LOCATION`
+  - 支持两种认证方式：服务账户文件或环境变量
+  - 创建详细设置文档 (`VERTEX_AI_SETUP.md`)
+- **用户体验升级**：
+  - **API使用标识**：响应中包含`apiUsed`字段显示使用的API
+  - **套餐信息**：返回用户当前套餐和特性描述
+  - **透明度**：用户可知道自己享受的服务等级
+- **错误处理与监控**：
+  - 完善的错误日志和状态跟踪
+  - 自动降级机制确保服务连续性
+  - 详细的控制台输出便于调试
+- **成本控制**：
+  - 仅付费用户使用Vertex AI，有效控制成本
+  - 支持Google Cloud预算和配额管理
+  - 估算月度成本：Standard $20-40，Super $40-80
+- **技术优势**：
+  - **无缝升级**：现有用户体验不受影响
+  - **高可用性**：多API策略保证服务稳定
+  - **易维护**：模块化设计便于后续扩展
+  - **监控友好**：详细日志支持运营监控
+
 ## ✅ 清理图片生成调试代码 - 提升代码整洁度
 - **问题描述**：CatQuiz组件和DebugInfo组件中存在大量用于调试的临时代码，影响代码可读性和维护性
 - **清理内容**：

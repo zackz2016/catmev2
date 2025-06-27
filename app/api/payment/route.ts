@@ -10,23 +10,17 @@ const creem = new Creem({
 
 // 产品配置
 const PRODUCT_CONFIGS = {
-  lite: {
-    productId: 'prod_4UNkxZPc3FmFtJNuwlsGrf',
-    name: 'Catme-lite',
-    description: '基础版套餐',
-    price: 990 // 9.9 USD
-  },
-  pro: {
+  standard: {
     productId: 'prod_6V0v4XYAsIOchRYysXCGFj',
-    name: 'Catme-pro',
-    description: '专业版套餐',
-    price: 1990 // 19.9 USD
+    name: 'Catme-standard',
+    description: '标准版套餐',
+    price: 499 // 4.99 USD
   },
   super: {
     productId: 'prod_5IdqdarRl3jrwF8WcyeH6J',
     name: 'Catme-super',
     description: '超级版套餐',
-    price: 4990 // 49.9 USD
+    price: 999 // 9.99 USD
   }
 };
 
