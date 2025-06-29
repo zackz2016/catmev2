@@ -29,7 +29,7 @@ export async function detectUserPlan(userId: string | null): Promise<PlanDetecti
 
     // 查询用户的付费记录来判断套餐
     const { data: transactions, error } = await supabase
-      .from('transactions')
+      .from('payment_transactions')
       .select('plan_id, status, created_at')
       .eq('user_id', userId)
       .eq('status', 'completed')

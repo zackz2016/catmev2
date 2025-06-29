@@ -7,6 +7,83 @@
 1. 拥有Google Cloud Platform (GCP) 账户
 2. 已启用计费功能的GCP项目
 3. 已安装Google Cloud CLI (可选，但推荐)
+4. **本地开发环境**：如需通过VPN访问Google服务，请参考 [VPN代理配置](#vpn代理配置本地开发) 部分
+
+## VPN代理配置（本地开发）
+
+如果您的本地环境无法直接访问Google服务，需要通过VPN代理访问，请按照以下步骤配置：
+
+### 配置HTTP代理环境变量
+
+在您的 `.env.local` 文件中添加以下代理配置：
+
+```env
+# HTTP 代理配置 (VPN)
+HTTP_PROXY=http://127.0.0.1:7890
+HTTPS_PROXY=http://127.0.0.1:7890
+NO_PROXY=localhost,127.0.0.1,::1,.local
+```
+
+### 代理配置说明
+
+- **HTTP_PROXY**: HTTP请求使用的代理地址
+- **HTTPS_PROXY**: HTTPS请求使用的代理地址（Google API使用HTTPS）
+- **NO_PROXY**: 不使用代理的地址列表，通常包括本地地址
+
+### 常见代理端口
+
+| VPN软件 | 默认代理端口 | 配置示例 |
+|---------|-------------|----------|
+| Clash | 7890 | `http://127.0.0.1:7890` |
+| V2rayN | 10809 | `http://127.0.0.1:10809` |
+| Shadowsocks | 1080 | `http://127.0.0.1:1080` |
+| 自定义 | 您的端口 | `http://127.0.0.1:YOUR_PORT` |
+
+### 验证代理配置
+
+1. **启动开发服务器**：
+   ```bash
+   npm run dev
+   ```
+
+2. **检查控制台日志**：
+   ```bash
+   # 应该看到类似输出
+   🔍 Vertex AI 可用性检查通过
+   🎨 Vertex AI: 开始生成图片...
+   ✅ Vertex AI 生成成功
+   ```
+
+3. **测试图片生成**：
+   - 访问 `http://localhost:3000`
+   - 使用付费账户生成图片
+   - 检查响应中的 `apiUsed` 字段是否为 `vertex-ai`
+
+### 代理故障排除
+
+#### 1. 代理连接失败
+```
+Error: Failed to connect to proxy
+```
+**解决方案：**
+- 确认VPN软件正在运行
+- 检查代理端口是否正确
+- 验证代理地址是否可访问
+
+#### 2. 认证通过但API调用失败
+```
+Error: timeout of 30000ms exceeded
+```
+**解决方案：**
+- 检查代理是否支持HTTPS
+- 尝试增加超时时间
+- 确认VPN节点可以访问Google服务
+
+#### 3. 部分请求走代理，部分不走
+**解决方案：**
+- 确保 `HTTPS_PROXY` 配置正确
+- 检查 `NO_PROXY` 配置是否过于宽泛
+- 重启开发服务器使环境变量生效
 
 ## 步骤1：创建和配置GCP项目
 

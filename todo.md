@@ -1,5 +1,87 @@
 # 当前开发步骤
 
+## ✅ VPN代理配置 - Vertex AI本地开发环境支持（完全成功）
+- **问题描述**：本地开发环境无法直接访问Google Cloud服务，需要通过VPN代理访问Vertex AI Imagen API
+- **解决方案**：实施方案2（全局代理Agent + HTTPS模块）配置VPN代理支持
+- **技术实现**：
+  - 修改 `lib/image-generator/vertex-imagen.ts`，使用Node.js原生HTTPS模块替代fetch
+  - 配置全局代理Agent，使用 `https-proxy-agent` 和 `http-proxy-agent`
+  - 设置环境变量：`HTTP_PROXY=http://127.0.0.1:7890`, `HTTPS_PROXY=http://127.0.0.1:7890`
+  - 使用 `google-auth-library` 进行Google Cloud认证
+- **关键技术突破**：
+  - **核心发现**：Node.js v22的内置`fetch`不会自动使用`https.globalAgent`
+  - **最终方案**：使用原生HTTPS模块，自动继承全局代理配置
+  - **API端点**：`imagen-4.0-generate-preview-06-06:predict`（用户已升级到最新版本）
+  - **请求格式**：使用正确的 `instances` 和 `parameters` 结构
+  - **响应处理**：解析 `predictions[0].bytesBase64Encoded` 获取图片数据
+- **完整验证结果**：
+  - ✅ 代理Agent包导入成功
+  - ✅ 全局代理配置正常工作（HTTP/HTTPS）
+  - ✅ 能够通过代理访问Google服务和Vertex AI端点
+  - ✅ HTTPS模块完美支持代理（最终修复）
+  - ✅ Google Cloud认证配置成功
+  - ✅ **图片生成完全成功**（Imagen 4.0）
+- **文档完善**：
+  - 创建 `VPN_PROXY_DEBUG_MEMO.md` 完整调试过程备忘录
+  - 创建 `PROXY_SETUP_SOLUTION2.md` 详细实施总结
+  - 创建 `VPN_PROXY_FINAL_SUMMARY.md` 最终成功总结
+  - 更新 `VERTEX_AI_SETUP.md` 添加VPN代理配置章节
+  - 提供多种Google Cloud认证方式和完整测试验证方法
+- **最终成果**：
+  - 本地开发环境完美支持Vertex AI Imagen 4.0图片生成
+  - 通过VPN代理的网络访问完全稳定可靠
+  - 完整的错误处理和监控日志系统
+  - 可复用的代理配置方案，适用于类似受限网络环境
+
+## ✅ 清理控制台日志输出 - 移除大量调试数据显示
+- **问题描述**：使用反向代理API生成图片时，控制台输出大量base64编码字符，影响开发体验
+- **根本原因**：代码中使用了`JSON.stringify(data, null, 2)`输出完整API响应，包含图片的base64数据
+- **清理内容**：
+  - 移除 `app/api/generate-cat/route.ts` 中输出完整响应结构的日志
+  - 简化 `lib/image-generator/vertex-imagen.ts` 中的调试输出
+  - 改进日志信息的可读性，使用中文和emoji提高识别度
+- **优化后的日志格式**：
+  - 图片大小显示：从字符长度改为KB单位 (如: `123KB`)
+  - 套餐信息：简化为 `📊 套餐检测: standard - Standard plan detected`
+  - API状态：使用简洁的成功/失败标识 `✅ Vertex AI 生成成功`
+- **保留的重要信息**：
+  - API响应状态码和错误信息
+  - 套餐检测结果和原因
+  - 图片生成成功状态和文件大小
+  - 用户积分变化情况
+- **用户体验改善**：
+  - 控制台不再被大量无用字符刷屏
+  - 开发调试更加高效，易于定位问题
+  - 日志信息更加结构化和可读
+
+## ✅ 修复注册用户API选择问题 - 关键数据库表名错误
+- **问题描述**：注册用户生成图片时使用了错误的API，所有付费用户都被误判为免费用户
+- **根本原因**：套餐检测代码中使用了错误的数据库表名
+  - 代码中查询的表：`transactions`（不存在）
+  - 实际数据库表名：`payment_transactions`
+  - 导致所有查询返回空结果，付费用户被误判为免费用户
+- **修复内容**：
+  - 更新 `lib/image-generator/plan-detector.ts` 中的表名
+  - 将 `.from('transactions')` 修正为 `.from('payment_transactions')`
+  - 验证修复后付费用户能正确检测到套餐类型
+- **影响验证**：
+  - 用户 `user_2ydSy7jD8Swfy1F4JuCSIOCxHyD` 有有效的Standard套餐记录
+  - 修复后该用户将正确使用Vertex AI Imagen 3.0 API
+  - 免费用户继续使用Gemini反向代理API
+- **技术细节**：
+  - 数据库中存在正确的付费记录：plan_id='standard', status='completed'
+  - 套餐检测逻辑本身是正确的，只是表名错误
+  - 修复后双API系统将按预期工作
+- **后续优化**：
+  - 重写Vertex AI实现，使用官方SDK替代直接REST调用
+  - 改进错误处理和用户友好的错误消息
+  - 创建快速设置指南简化Google Cloud配置
+- **用户体验改善**：
+  - Standard/Super套餐用户现在能享受到高质量的Vertex AI图片生成
+  - API使用标识会正确显示 'vertex-ai' 而不是 'proxy'
+  - 付费用户将获得承诺的服务质量
+  - 如果Vertex AI暂时不可用，会自动降级到代理API保证服务可用性
+
 ## ✅ Creem Webhook数据结构修复 - 解决支付事件处理问题
 - **问题描述**：webhook处理代码与Creem实际响应数据结构不匹配，导致支付事件无法正确处理
 - **主要问题**：

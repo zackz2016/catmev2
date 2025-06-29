@@ -86,7 +86,7 @@ async function generateImageWithProxy(prompt: CatPrompt): Promise<{ imageUrl: st
   // 结尾要求
   imagePrompt += `The overall aesthetic should be exceptionally cute, charming, and visually appealing. Ensure the image captures the unique personality and charm of this specific cat character.`;
 
-  console.log('🎨 Proxy API: Generated image prompt:', imagePrompt);
+  console.log('🎨 Proxy API: 开始生成图片...');
 
   // 检查环境变量
   if (!GEMINI_PROXY_BASE_URL) {
@@ -96,10 +96,8 @@ async function generateImageWithProxy(prompt: CatPrompt): Promise<{ imageUrl: st
 
   // 构建完整的反向代理URL
   const fullProxyUrl = `${GEMINI_PROXY_BASE_URL}/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent`;
-  console.log('🎨 Proxy API: Full proxy URL:', fullProxyUrl);
 
   // 调用API生图
-  console.log('🎨 Proxy API: Calling Gemini API...');
   const response = await fetch(fullProxyUrl, {
     method: 'POST',
     headers: {
@@ -118,29 +116,31 @@ async function generateImageWithProxy(prompt: CatPrompt): Promise<{ imageUrl: st
     })
   });
 
-  console.log('🎨 Proxy API: Gemini response status:', response.status);
+  console.log('🎨 Proxy API: 响应状态:', response.status);
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('🎨 Proxy API: Gemini error:', errorText);
+    console.error('🎨 Proxy API: 生成失败:', errorText);
     throw new Error(`Failed to generate image: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
-  console.log('🎨 Proxy API: Gemini response data structure:', JSON.stringify(data, null, 2));
+  
+  // 简化日志 - 不输出完整数据结构，避免控制台被base64数据刷屏
+  console.log('🎨 Proxy API: 收到响应，候选数量:', data.candidates?.length || 0);
 
   if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
-    console.error('🎨 Proxy API: Invalid response structure');
+    console.error('🎨 Proxy API: 响应结构无效');
     throw new Error('Invalid response structure from image generation API');
   }
 
   for (const part of data.candidates[0].content.parts) {
     if (part.text) {
-      console.log('🎨 Generated image description:', part.text);
+      console.log('🎨 生成的图片描述:', part.text);
     } else if (part.inlineData) {
-      console.log('🎨 Found inline image data, mimeType:', part.inlineData.mimeType);
+      console.log('🎨 找到图片数据, 类型:', part.inlineData.mimeType);
       const imageData = part.inlineData.data; 
       const imageUrl = `data:${part.inlineData.mimeType};base64,${imageData}`;
-      console.log('🎨 Generated imageUrl length:', imageUrl.length);
+      console.log('🎨 图片生成成功, 大小:', Math.round(imageUrl.length / 1024) + 'KB');
       
       return {
         imageUrl,
@@ -163,14 +163,12 @@ export async function POST(request: Request) {
 
     // 检测用户套餐
     const planResult = await detectUserPlan(userId);
-    console.log('📊 用户套餐检测结果:', planResult);
+    console.log('📊 套餐检测:', planResult.plan, '-', planResult.reason);
 
     if (!userId) {
       // 访客模式：信任前端的试用次数管理
-      // 前端已经通过localStorage检查并消费了试用次数
-      // 这里不再进行额外的服务端检查，避免双重验证
       isGuestMode = true;
-      console.log('🐱 API: Guest mode detected, trusting frontend trial management');
+      console.log('🐱 访客模式: 使用免费体验');
     } else {
       // 注册用户模式：检查积分
       const { data: userPoints, error: pointsError } = await supabase
@@ -221,7 +219,7 @@ export async function POST(request: Request) {
 
     // 根据套餐选择API
     if (planResult.shouldUseVertexAI) {
-      console.log('🎨 使用 Vertex AI Imagen API 生成图片...');
+      console.log('🎨 使用 Vertex AI 生成图片...');
       
       // 检查 Vertex AI 可用性
       const isVertexAIAvailable = await checkVertexAIAvailability();
@@ -234,12 +232,12 @@ export async function POST(request: Request) {
             imageUrl = vertexResult.imageUrl;
             generatedPrompt = 'Generated with Vertex AI Imagen 3.0';
             apiUsed = 'vertex-ai';
-            console.log('✅ Vertex AI 图片生成成功');
+            console.log('✅ Vertex AI 生成成功');
           } else {
             throw new Error(vertexResult.error || 'Vertex AI generation failed');
           }
         } catch (error) {
-          console.error('❌ Vertex AI 生成失败，回退到代理API:', error);
+          console.error('❌ Vertex AI 失败，回退到代理API:', error);
           // 回退到代理API
           const proxyResult = await generateImageWithProxy(prompt);
           imageUrl = proxyResult.imageUrl;
@@ -255,7 +253,7 @@ export async function POST(request: Request) {
         apiUsed = 'proxy-fallback';
       }
     } else {
-      console.log('🎨 使用 Gemini 反向代理 API 生成图片...');
+      console.log('🎨 使用反向代理API生成图片...');
       const proxyResult = await generateImageWithProxy(prompt);
       imageUrl = proxyResult.imageUrl;
       generatedPrompt = proxyResult.prompt;
@@ -275,7 +273,7 @@ export async function POST(request: Request) {
         // 不影响图片生成，继续处理
       }
       
-      console.log('🐱 API: Guest image generated successfully');
+      console.log('🐱 访客图片生成完成');
       return NextResponse.json({ 
         imageUrl,
         isGuestMode: true,
@@ -300,6 +298,7 @@ export async function POST(request: Request) {
         console.error('Error deducting points:', deductError);
       }
 
+      console.log('👤 用户图片生成完成, 剩余积分:', updatedPoints || (currentPoints - 1));
       return NextResponse.json({ 
         imageUrl,
         pointsRemaining: updatedPoints || (currentPoints - 1),
