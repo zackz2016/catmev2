@@ -6,8 +6,10 @@ import { useUser } from '@clerk/nextjs';
 import { SignInButton } from '@clerk/nextjs';
 import { usePoints } from '@/hooks/use-points';
 import { useGuestTrial } from '@/hooks/use-guest-trial';
+import { useUserPlan } from '@/hooks/use-user-plan';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { buildUserFriendlyPrompt } from '@/lib/prompt-builder';
 import { RefreshCw, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -17,6 +19,7 @@ export default function CatQuiz() {
   const { isSignedIn } = useUser();
   const { points, updatePoints, refreshPoints } = usePoints();
   const guestTrial = useGuestTrial();
+  const userPlan = useUserPlan();
   const { toast } = useToast();
   
   // 问卷状态
@@ -151,7 +154,7 @@ export default function CatQuiz() {
     try {
       const prompt = buildPrompt(finalAnswers, lastOptionIndex);
       
-      const promptText = `Generate a ${prompt.style} style illustration of a ${prompt.breed} cat that is ${prompt.pose} with a ${prompt.expression} expression, showing a ${prompt.personality} personality${prompt.environment ? ` in a ${prompt.environment} setting` : ''}${prompt.mood ? ` with a ${prompt.mood} atmosphere` : ''}.`;
+      const promptText = buildUserFriendlyPrompt(prompt);
       setCurrentPrompt(promptText);
       
       // 构建猫咪描述文字
@@ -159,7 +162,14 @@ export default function CatQuiz() {
       const description = `You are a ${prompt.personality} ${breedName} cat.`;
       setCatDescription(description);
       
-      const response = await fetch('/api/generate-cat', {
+      // 根据用户套餐选择API端点
+      const apiEndpoint = userPlan.shouldUseNewAPI 
+        ? '/api/generate-cat/test'   // Standard/Super用户使用新的测试API
+        : '/api/generate-cat';       // 免费用户/访客使用原有API
+      
+      console.log(`🎯 API选择: ${userPlan.plan}套餐 - ${userPlan.reason} - 使用端点: ${apiEndpoint}`);
+      
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
@@ -202,6 +212,9 @@ export default function CatQuiz() {
       if (data.imageUrl) {
         setGeneratedImage(data.imageUrl);
         
+        // 日志显示API使用情况
+        console.log(`✅ 图片生成成功: API=${data.apiUsed || 'unknown'}, 套餐=${data.plan || 'unknown'}, 测试版本=${data.testVersion || false}`);
+        
         if (data.isGuestMode) {
           toast({
             title: "生成成功！",
@@ -209,8 +222,9 @@ export default function CatQuiz() {
           });
         } else {
           refreshPoints();
+          const apiInfo = data.testVersion ? ' (新版测试API)' : '';
           toast({
-            title: "生成成功",
+            title: "生成成功" + apiInfo,
             description: `图片已生成，剩余积分：${data.pointsRemaining || (points - 1)}`,
           });
         }

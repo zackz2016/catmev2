@@ -1,47 +1,9 @@
 // Vertex AI Imagen API 服务模块
 // 为 standard 和 super 套餐提供高质量的图片生成服务
 
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import { HttpProxyAgent } from 'http-proxy-agent';
 import { CatPrompt } from '@/types/quiz';
-
-// 在模块加载时配置全局代理
-function configureGlobalProxy() {
-  const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy;
-  const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
-  
-  if (httpProxy || httpsProxy) {
-    console.log('🔗 配置全局代理支持...');
-    
-    // 为Google Cloud请求配置全局代理
-    const originalHttpsGlobalAgent = require('https').globalAgent;
-    const originalHttpGlobalAgent = require('http').globalAgent;
-    
-    if (httpsProxy) {
-      const httpsAgent = new HttpsProxyAgent(httpsProxy);
-      require('https').globalAgent = httpsAgent;
-      console.log('✅ HTTPS全局代理已配置:', httpsProxy);
-    }
-    
-    if (httpProxy) {
-      const httpAgent = new HttpProxyAgent(httpProxy);
-      require('http').globalAgent = httpAgent;
-      console.log('✅ HTTP全局代理已配置:', httpProxy);
-    }
-    
-    // 确保Google Cloud认证库使用代理
-    process.env.GRPC_PROXY = httpsProxy || httpProxy;
-    process.env.HTTPS_PROXY = httpsProxy || httpProxy;
-    process.env.HTTP_PROXY = httpProxy || httpsProxy;
-    
-    return true;
-  }
-  
-  return false;
-}
-
-// 立即执行代理配置
-const proxyConfigured = configureGlobalProxy();
+import { buildImagePrompt } from '@/lib/prompt-builder';
+import { isProxyConfigured, getProxyInfo } from '@/lib/proxy-config';
 
 // Google Cloud认证配置
 async function getAccessToken(): Promise<string> {
@@ -81,36 +43,12 @@ export async function generateImageWithVertexAI(prompt: CatPrompt): Promise<Vert
       };
     }
     
-    // 构建增强版图片生成提示词
-    let imagePrompt = `Generate a stunning, high-quality, and artistically refined ${prompt.style} style image of a ${prompt.breed} cat, emphasizing intricate details and vibrant colors. `;
-    
-    // 添加姿势和表情描述
-    imagePrompt += `The cat should be in a ${prompt.pose} pose with a ${prompt.expression} expression, clearly conveying a ${prompt.personality} personality. `;
-    
-    // 添加环境和氛围描述（如果有的话）
-    if (prompt.environment) {
-      imagePrompt += `The scene should be set in a ${prompt.environment} environment. `;
-    }
-    
-    if (prompt.mood) {
-      imagePrompt += `The overall atmosphere should feel ${prompt.mood}. `;
-    }
-    
-    // 添加颜色和配饰描述（如果有的话）
-    if (prompt.color) {
-      imagePrompt += `Pay special attention to the ${prompt.color} color scheme. `;
-    }
-    
-    if (prompt.accessory) {
-      imagePrompt += `The cat should be wearing or accompanied by ${prompt.accessory}. `;
-    }
-    
-    // 结尾要求
-    imagePrompt += `The overall aesthetic should be exceptionally cute, charming, and visually appealing. Ensure the image captures the unique personality and charm of this specific cat character.`;
+    // 使用统一的提示词构建函数
+    const imagePrompt = buildImagePrompt(prompt);
 
     console.log('🎨 Vertex AI: 生成的提示词:', imagePrompt);
 
-    if (proxyConfigured) {
+    if (isProxyConfigured()) {
       console.log('🔗 Vertex AI 将通过全局代理连接Google服务');
     }
 
@@ -153,7 +91,7 @@ export async function generateImageWithVertexAI(prompt: CatPrompt): Promise<Vert
     };
 
     // 如果配置了代理，代理agent会通过全局配置自动使用
-    if (proxyConfigured) {
+    if (isProxyConfigured()) {
       console.log('🔗 Vertex AI: 使用HTTPS模块通过全局代理发送请求');
     }
     
@@ -264,7 +202,7 @@ export async function checkVertexAIAvailability(): Promise<boolean> {
       console.log('🔍 Vertex AI 可用性检查通过');
       
       // 如果配置了代理，输出代理状态
-      if (proxyConfigured) {
+      if (isProxyConfigured()) {
         console.log('🔗 Vertex AI 代理配置已启用');
       }
       

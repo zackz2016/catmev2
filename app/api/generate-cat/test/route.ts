@@ -1,3 +1,4 @@
+// 新版本图片生成API - 使用Imagen 4.0测试
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { CatPrompt } from '@/types/quiz';
@@ -7,54 +8,43 @@ import { generateImageWithVertexAI, checkVertexAIAvailability } from '@/lib/imag
 import { buildImagePrompt } from '@/lib/prompt-builder';
 import { isProxyConfigured, getProxyInfo } from '@/lib/proxy-config';
 
-const GEMINI_PROXY_BASE_URL = process.env.GEMINI_PROXY_URL;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-enum Modality {
-  TEXT = 'TEXT',
-  IMAGE = 'IMAGE',  
-}
-
-// 访客试用逻辑已移至前端管理，简化后端逻辑
-
-
-async function generateImageWithProxy(prompt: CatPrompt): Promise<{ imageUrl: string; prompt: string }> {
+// 新的Imagen 4.0 API生成函数
+async function generateImageWithImagen4(prompt: CatPrompt): Promise<{ imageUrl: string; prompt: string }> {
   // 使用统一的提示词构建函数
   const imagePrompt = buildImagePrompt(prompt);
 
-  console.log('🎨 Proxy API: 开始生成图片...');
+  console.log('🎨 Imagen 4.0 API: 开始生成图片...');
   
   // 输出代理配置状态
   if (isProxyConfigured()) {
     const proxyInfo = getProxyInfo();
-    console.log('🔗 Proxy API: 全局代理已启用，将通过代理访问Gemini服务');
+    console.log('🔗 Imagen 4.0 API: 全局代理已启用，将通过代理访问Google服务');
     console.log('🔗 代理配置:', { 
       https: proxyInfo.httpsProxy ? '✅ 已配置' : '❌ 未配置',
       http: proxyInfo.httpProxy ? '✅ 已配置' : '❌ 未配置'
     });
   } else {
-    console.log('ℹ️ Proxy API: 未检测到代理配置，将直接访问Gemini服务');
+    console.log('ℹ️ Imagen 4.0 API: 未检测到代理配置，将直接访问Google服务');
   }
 
-
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-  // 完整的gemini API URL
-  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`;
+  // 新的Imagen 4.0 API端点
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-preview-06-06:predict`;
 
   // 使用Node.js原生HTTPS模块确保代理支持
   const https = require('https');
   const url = require('url');
   
   const requestBody = JSON.stringify({
-    model: 'gemini-2.0-flash-preview-image-generation',
-    contents: [{
-      parts: [{
-        text: imagePrompt
-      }]
-    }],
-    generationConfig: {
-      responseModalities: [Modality.TEXT, Modality.IMAGE],
-   },
+    instances: [
+      {
+        prompt: imagePrompt
+      }
+    ],
+    parameters: {
+      sampleCount: 1
+    }
   });
   
   const urlParsed = new URL(apiUrl);
@@ -65,6 +55,7 @@ async function generateImageWithProxy(prompt: CatPrompt): Promise<{ imageUrl: st
     path: urlParsed.pathname + urlParsed.search,
     method: 'POST',
     headers: {
+      'x-goog-api-key': GEMINI_API_KEY,
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(requestBody)
     }
@@ -72,7 +63,7 @@ async function generateImageWithProxy(prompt: CatPrompt): Promise<{ imageUrl: st
 
   // 如果配置了代理，全局代理agent会自动使用
   if (isProxyConfigured()) {
-    console.log('🔗 Proxy API: 使用HTTPS模块通过全局代理发送请求');
+    console.log('🔗 Imagen 4.0 API: 使用HTTPS模块通过全局代理发送请求');
   }
   
   // 发送HTTPS请求
@@ -101,40 +92,37 @@ async function generateImageWithProxy(prompt: CatPrompt): Promise<{ imageUrl: st
     req.end();
   });
 
-  console.log('🎨 Proxy API: 响应状态:', response.status);
+  console.log('🎨 Imagen 4.0 API: 响应状态:', response.status);
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('🎨 Proxy API: 生成失败:', errorText);
+    console.error('🎨 Imagen 4.0 API: 生成失败:', errorText);
     throw new Error(`Failed to generate image: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
   
   // 简化日志 - 不输出完整数据结构，避免控制台被base64数据刷屏
-  console.log('🎨 Proxy API: 收到响应，候选数量:', data.candidates?.length || 0);
+  console.log('🎨 Imagen 4.0 API: 收到响应，预测数量:', data.predictions?.length || 0);
 
-  if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
-    console.error('🎨 Proxy API: 响应结构无效');
-    throw new Error('Invalid response structure from image generation API');
+  if (!data.predictions || !data.predictions[0]) {
+    console.error('🎨 Imagen 4.0 API: 响应结构无效');
+    throw new Error('Invalid response structure from Imagen 4.0 API');
   }
 
-  for (const part of data.candidates[0].content.parts) {
-    if (part.text) {
-      console.log('🎨 生成的图片描述:', part.text);
-    } else if (part.inlineData) {
-      console.log('🎨 找到图片数据, 类型:', part.inlineData.mimeType);
-      const imageData = part.inlineData.data; 
-      const imageUrl = `data:${part.inlineData.mimeType};base64,${imageData}`;
-      console.log('🎨 图片生成成功, 大小:', Math.round(imageUrl.length / 1024) + 'KB');
-      
-      return {
-        imageUrl,
-        prompt: imagePrompt
-      };
-    }
+  const prediction = data.predictions[0];
+  if (prediction.bytesBase64Encoded) {
+    console.log('🎨 找到图片数据 (Imagen 4.0)');
+    const imageData = prediction.bytesBase64Encoded;
+    const imageUrl = `data:image/png;base64,${imageData}`;
+    console.log('🎨 图片生成成功 (Imagen 4.0), 大小:', Math.round(imageUrl.length / 1024) + 'KB');
+    
+    return {
+      imageUrl,
+      prompt: imagePrompt
+    };
   }
 
-  throw new Error('No image generated from proxy API');
+  throw new Error('No image generated from Imagen 4.0 API');
 }
 
 export async function POST(request: Request) {
@@ -148,12 +136,16 @@ export async function POST(request: Request) {
 
     // 检测用户套餐
     const planResult = await detectUserPlan(userId);
-    console.log('📊 套餐检测:', planResult.plan, '-', planResult.reason);
+    console.log('📊 套餐检测 (新版API):', planResult.plan, '-', planResult.reason);
 
     if (!userId) {
-      // 访客模式：信任前端的试用次数管理
+      // 访客模式不使用新版测试API，应该使用原有API
       isGuestMode = true;
-      console.log('🐱 访客模式: 使用免费体验');
+      console.log('🎨 访客模式不支持新版测试API，请使用原有API');
+      return NextResponse.json(
+        { error: 'Guest users should use the original API endpoint, not the test version' },
+        { status: 400 }
+      );
     } else {
       // 注册用户模式：检查积分
       const { data: userPoints, error: pointsError } = await supabase
@@ -202,9 +194,9 @@ export async function POST(request: Request) {
     let generatedPrompt = '';
     let apiUsed = '';
 
-    // 根据套餐选择API
+    // 注册用户根据套餐选择API
     if (planResult.shouldUseVertexAI) {
-      console.log('🎨 使用 Vertex AI 生成图片...');
+      console.log('🎨 Standard/Super用户使用 Vertex AI...');
       
       // 检查 Vertex AI 可用性
       const isVertexAIAvailable = await checkVertexAIAvailability();
@@ -222,77 +214,65 @@ export async function POST(request: Request) {
             throw new Error(vertexResult.error || 'Vertex AI generation failed');
           }
         } catch (error) {
-          console.error('❌ Vertex AI 失败，回退到代理API:', error);
-          // 回退到代理API
-          const proxyResult = await generateImageWithProxy(prompt);
-          imageUrl = proxyResult.imageUrl;
-          generatedPrompt = proxyResult.prompt;
-          apiUsed = 'proxy-fallback';
+          console.error('❌ Vertex AI 失败，使用新的Imagen 4.0 API:', error);
+          // 回退到新的Imagen 4.0 API
+          const imagen4Result = await generateImageWithImagen4(prompt);
+          imageUrl = imagen4Result.imageUrl;
+          generatedPrompt = imagen4Result.prompt;
+          apiUsed = 'imagen-4.0-fallback';
         }
       } else {
-        console.warn('⚠️ Vertex AI 不可用，使用代理API');
-        // 回退到代理API
-        const proxyResult = await generateImageWithProxy(prompt);
-        imageUrl = proxyResult.imageUrl;
-        generatedPrompt = proxyResult.prompt;
-        apiUsed = 'proxy-fallback';
+        console.warn('⚠️ Vertex AI 不可用，使用新的Imagen 4.0 API');
+        // 使用新的Imagen 4.0 API
+        const imagen4Result = await generateImageWithImagen4(prompt);
+        imageUrl = imagen4Result.imageUrl;
+        generatedPrompt = imagen4Result.prompt;
+        apiUsed = 'imagen-4.0';
       }
     } else {
-      console.log('🎨 使用反向代理API生成图片...');
-      const proxyResult = await generateImageWithProxy(prompt);
-      imageUrl = proxyResult.imageUrl;
-      generatedPrompt = proxyResult.prompt;
-      apiUsed = 'proxy';
+      console.log('🎨 免费用户使用新的Imagen 4.0 API测试...');
+      const imagen4Result = await generateImageWithImagen4(prompt);
+      imageUrl = imagen4Result.imageUrl;
+      generatedPrompt = imagen4Result.prompt;
+      apiUsed = 'imagen-4.0-test';
     }
 
     if (!imageUrl) {
       throw new Error('No image generated from any API');
     }
 
-    if (isGuestMode) {
-      // 访客模式：试用次数管理已移至前端，后端只负责图片生成
-      console.log('🐱 访客图片生成完成');
-      return NextResponse.json({ 
-        imageUrl,
-        isGuestMode: true,
-        message: '免费体验已使用，注册后可获得更多次数',
-        prompt: generatedPrompt,
-        apiUsed,
-        plan: planResult.plan
-      });
-    } else {
-      // 注册用户模式：扣减积分
-      const { data: updatedPoints, error: deductError } = await supabase.rpc(
-        'update_user_points',
-        {
-          p_user_id: userId,
-          p_amount: 1,
-          p_type: 'SPEND',
-          p_reason: `Generated AI cat image using ${apiUsed}`
-        }
-      );
-
-      if (deductError) {
-        console.error('Error deducting points:', deductError);
+    // 注册用户模式：扣减积分
+    const { data: updatedPoints, error: deductError } = await supabase.rpc(
+      'update_user_points',
+      {
+        p_user_id: userId,
+        p_amount: 1,
+        p_type: 'SPEND',
+        p_reason: `Generated AI cat image using ${apiUsed} (test version)`
       }
+    );
 
-      console.log('👤 用户图片生成完成, 剩余积分:', updatedPoints || (currentPoints - 1));
-      return NextResponse.json({ 
-        imageUrl,
-        pointsRemaining: updatedPoints || (currentPoints - 1),
-        isGuestMode: false,
-        prompt: generatedPrompt,
-        apiUsed,
-        plan: planResult.plan,
-        planFeatures: planResult.reason
-      });
+    if (deductError) {
+      console.error('Error deducting points:', deductError);
     }
+
+    console.log('👤 新版API图片生成完成, 剩余积分:', updatedPoints || (currentPoints - 1));
+    return NextResponse.json({ 
+      imageUrl,
+      pointsRemaining: updatedPoints || (currentPoints - 1),
+      isGuestMode: false,
+      prompt: generatedPrompt,
+      apiUsed,
+      plan: planResult.plan,
+      planFeatures: planResult.reason,
+      testVersion: true // 标识这是测试版本
+    });
   
   } catch (error) {
-    console.error('Error generating cat image:', error);
+    console.error('Error generating cat image (test version):', error);
     return NextResponse.json(
-      { error: 'Failed to generate cat image' },
+      { error: 'Failed to generate cat image in test version' },
       { status: 500 }
     );
   }
-}   
+} 
