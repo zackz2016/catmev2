@@ -1,3 +1,5 @@
+// 积分系统钩子
+
 'use client';
 
 import { useState, useEffect } from 'react';

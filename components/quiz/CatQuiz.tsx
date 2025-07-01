@@ -164,8 +164,8 @@ export default function CatQuiz() {
       
       // 根据用户套餐选择API端点
       const apiEndpoint = userPlan.shouldUseNewAPI 
-        ? '/api/generate-cat/test'   // Standard/Super用户使用新的测试API
-        : '/api/generate-cat';       // 免费用户/访客使用原有API
+        ? '/api/generate-cat/power'   // Standard/Super用户使用新的测试API
+        : '/api/generate-cat/free';       // 免费用户/访客使用原有API
       
       console.log(`🎯 API选择: ${userPlan.plan}套餐 - ${userPlan.reason} - 使用端点: ${apiEndpoint}`);
       

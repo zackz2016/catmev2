@@ -43,7 +43,7 @@ async function generateImageWithImagen4(prompt: CatPrompt): Promise<{ imageUrl: 
       }
     ],
     parameters: {
-      sampleCount: 1
+      sampleCount: 1     
     }
   });
   
