@@ -20,8 +20,7 @@ export async function uploadImageToCloudinary(
       tags: ['generated', 'cat', 'ai'], // 标签便于管理
       context: prompt ? `prompt=${prompt}` : undefined, // 保存提示词
       transformation: [
-        { quality: 'auto', fetch_format: 'auto' }, // 自动优化
-        { width: 512, height: 512, crop: 'fit' }, // 统一尺寸
+        { quality: 'auto', fetch_format: 'auto' }, // 自动优化，保持原始尺寸
       ],
     });
 

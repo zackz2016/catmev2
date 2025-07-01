@@ -10,9 +10,10 @@ import { useUserPlan } from '@/hooks/use-user-plan';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { buildUserFriendlyPrompt } from '@/lib/prompt-builder';
-import { RefreshCw, Gift } from 'lucide-react';
+import { RefreshCw, Gift, X, ZoomIn, Download, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function CatQuiz() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function CatQuiz() {
   const [catDescription, setCatDescription] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [imageSaved, setImageSaved] = useState(false);
+  const [showHighResModal, setShowHighResModal] = useState(false);
 
   // 组件加载时生成第一个问题
   useEffect(() => {
@@ -353,6 +355,95 @@ export default function CatQuiz() {
     );
   };
 
+  // 下载图片
+  const handleDownload = async (imageUrl: string, filename: string, imageId: number) => {
+    try {
+      const response = await fetch(imageUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      // 更新下载统计
+      try {
+        await fetch('/api/images/stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageId, action: 'download' }),
+        })
+      } catch (statsError) {
+        console.error('Failed to update download stats:', statsError)
+      }
+      
+      toast({
+        title: "下载成功",
+        description: "图片已保存到本地",
+      })
+    } catch (error) {
+      console.error('Download error:', error)
+      toast({
+        title: "下载失败",
+        description: "请稍后重试",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // 分享图片
+  const handleShare = async (imageUrl: string, imageId: number, prompt?: string) => {
+    try {
+      // 验证URL格式是否有效
+      const isValidUrl = (url: string) => {
+        try {
+          new URL(url)
+          return url.startsWith('http://') || url.startsWith('https://')
+        } catch {
+          return false
+        }
+      }
+
+      if (navigator.share && isValidUrl(imageUrl)) {
+        await navigator.share({
+          title: 'AI生成的猫咪图片',
+          text: prompt || '看看这只可爱的AI猫咪！',
+          url: imageUrl,
+        })
+      } else {
+        // 回退到复制链接
+        await navigator.clipboard.writeText(imageUrl)
+        toast({
+          title: "链接已复制",
+          description: "图片链接已复制到剪贴板",
+        })
+      }
+      
+      // 更新分享统计
+      try {
+        await fetch('/api/images/stats', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageId, action: 'share' }),
+        })
+      } catch (statsError) {
+        console.error('Failed to update share stats:', statsError)
+      }
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') { // 用户取消分享不算错误
+        console.error('Share error:', error)
+        toast({
+          title: "分享失败",
+          description: "无法复制链接",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
   // 如果是已注册用户但没有积分，显示购买提示
   if (isSignedIn && points < 1 && !isGenerating && !generatedImage) {
     return (
@@ -389,6 +480,7 @@ export default function CatQuiz() {
   }
 
   return (
+    <>
     <section className="max-w-4xl mx-auto p-6 bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700/50 ">
       {/* {renderGuestStatus()} */}
       
@@ -428,12 +520,34 @@ export default function CatQuiz() {
           )}
           
           <div className="mb-6">
-            <img 
-              src={generatedImage} 
-              alt="Generated Cat" 
-              className="max-w-full h-auto rounded-lg shadow-lg mx-auto animate-fade-in"
-              style={{ maxHeight: '500px' }}
-            />
+            {/* 图片容器 - 付费用户可点击查看高清 */}
+            {userPlan.shouldUseNewAPI ? (
+              <div 
+                className="relative group cursor-pointer"
+                onClick={() => setShowHighResModal(true)}
+              >
+                <img 
+                  src={generatedImage} 
+                  alt="Generated Cat" 
+                  className="max-w-full h-auto rounded-lg shadow-lg mx-auto animate-fade-in group-hover:opacity-90 transition-opacity"
+                  style={{ maxHeight: '500px' }}
+                />
+                {/* 付费用户悬停提示 */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full flex items-center gap-2 text-gray-800 font-medium">
+                    <ZoomIn className="w-4 h-4" />
+                    {/* <span>点击查看高清图</span> */}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <img 
+                src={generatedImage} 
+                alt="Generated Cat" 
+                className="max-w-full h-auto rounded-lg shadow-lg mx-auto animate-fade-in"
+                style={{ maxHeight: '500px' }}
+              />
+            )}
           </div>
           
           <div className="flex gap-4 justify-center flex-wrap">
@@ -514,5 +628,42 @@ export default function CatQuiz() {
         </div>
       )}
     </section>
+
+    {/* 高清图片Modal - 仅付费用户 */}
+    {userPlan.shouldUseNewAPI && generatedImage && (
+      <Dialog open={showHighResModal} onOpenChange={setShowHighResModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden"> 
+          <div className="relative">
+            <img 
+              src={generatedImage} 
+              alt="High Resolution Cat" 
+              className="w-full h-auto max-h-[80vh] object-contain mt-10 mb-10"
+            />
+            {/* 下载和分享按钮 */}
+            <div className="absolute top-4 right-4 flex gap-2">
+                             <Button
+                 size="sm"
+                 variant="secondary"
+                 className="bg-white/20 backdrop-blur-sm hover:bg-white/30"
+                 onClick={() => handleDownload(generatedImage, 'catme-hd.jpg', 0)}
+               >
+                 <Download className="w-4 h-4 mr-2" />
+                 Download
+               </Button>
+               <Button
+                 size="sm"
+                 variant="secondary"
+                 className="bg-white/20 backdrop-blur-sm hover:bg-white/30"
+                 onClick={() => handleShare(generatedImage, 0, currentPrompt || undefined)}
+               >
+                 <Share2 className="w-4 h-4 mr-2" />
+                 Share
+               </Button>
+            </div>    
+          </div>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 } 

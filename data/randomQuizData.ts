@@ -1,198 +1,162 @@
-// AI随机问卷题库 - 每个阶段包含多个有趣的问题变体
+// 猫咪生成问卷新版题库 - 多样化设计
 import { RandomQuestion } from '@/types/quiz';
 
-// 阶段1：性格探索问题库
+// 阶段1：气质行为设定
 export const stage1Questions: RandomQuestion[] = [
   {
-    title: "如果你穿越成了猫咪，第一件事想做什么？",
+    title: "如果猫咪的你早晨醒来，会做什么？",
     options: [
-      { text: "找个最舒服的地方睡大觉", personality: "lazy", pose: "lying down" },
-      { text: "到处跑酷炫耍帅", personality: "energetic", pose: "jumping" },
-      { text: "对着镜子各种摆pose", personality: "social", pose: "sitting" },
-      { text: "寻找世界上最好吃的小鱼干", personality: "curious", pose: "exploring" }
+      { text: "继续躺着发呆", personality: "lazy", pose: "lying down" },
+      { text: "冲向窗边看风景", personality: "curious", pose: "walking" },
+      { text: "爬高跳低开始锻炼", personality: "energetic", pose: "jumping" },
+      { text: "找人撒娇蹭蹭", personality: "friendly", pose: "rolling" }
     ]
   },
   {
-    title: "作为一只猫咪，你最讨厌什么？",
+    title: "你被突然抱起来时会？",
     options: [
-      { text: "被打扰睡觉，简直要命", personality: "lazy", pose: "lying down" },
-      { text: "被关在室内，无法自由奔跑", personality: "energetic", pose: "jumping" },
-      { text: "独自待着，没人陪伴", personality: "social", pose: "playing" },
-      { text: "无聊的重复，没有新鲜事", personality: "curious", pose: "exploring" }
+      { text: "挣脱逃跑", personality: "independent", pose: "running" },
+      { text: "乖乖躺着不动", personality: "calm", pose: "sitting" },
+      { text: "喵喵抗议大声表达", personality: "expressive", pose: "meowing" },
+      { text: "四肢一摊装死", personality: "dramatic", pose: "lying down" }
     ]
   },
   {
-    title: "猫咪的你会选择什么样的日常？",
+    title: "你是那种喜欢探索新鲜事的猫吗？",
     options: [
-      { text: "每天20小时睡觉时光", personality: "lazy", pose: "lying down" },
-      { text: "户外冒险和运动不停", personality: "energetic", pose: "jumping" },
-      { text: "和主人互动玩耍", personality: "social", pose: "playing" },
-      { text: "探索家里每个角落", personality: "curious", pose: "exploring" }
+      { text: "每个角落都要去嗅一嗅", personality: "curious", pose: "exploring" },
+      { text: "对变化超敏感，先观察再说", personality: "alert", pose: "sitting" },
+      { text: "冲上去看个究竟", personality: "bold", pose: "jumping" },
+      { text: "宁愿宅在自己的小窝里", personality: "introverted", pose: "sleeping" }
     ]
   },
   {
-    title: "如果你是猫咪老板，会经营什么店？",
+    title: "在猫咪派对上你最可能在干嘛？",
     options: [
-      { text: "舒适按摩店，专业躺平", personality: "lazy", pose: "lying down" },
-      { text: "运动健身房，活力满满", personality: "energetic", pose: "jumping" },
-      { text: "交友咖啡厅，温馨社交", personality: "social", pose: "sitting" },
-      { text: "神秘探险社，发现未知", personality: "curious", pose: "exploring" }
-    ]
-  },
-  {
-    title: "猫咪的你最想拥有什么超能力？",
-    options: [
-      { text: "时间暂停，永远在睡觉", personality: "lazy", pose: "lying down" },
-      { text: "瞬间移动，想去哪去哪", personality: "energetic", pose: "jumping" },
-      { text: "心灵感应，读懂所有人", personality: "social", pose: "sitting" },
-      { text: "透视眼，看穿一切秘密", personality: "curious", pose: "exploring" }
+      { text: "和其他猫大玩特玩", personality: "playful", pose: "playing" },
+      { text: "找个角落独自观察", personality: "quiet", pose: "sitting" },
+      { text: "跑酷炫技成焦点", personality: "attention-seeking", pose: "jumping" },
+      { text: "在食物区舔盘子", personality: "foodie", pose: "eating" }
     ]
   }
 ];
 
-// 阶段2：身份设定问题库
+// 阶段2：外貌身份设定
 export const stage2Questions: RandomQuestion[] = [
   {
-    title: "你希望成为哪种猫咪网红？",
+    title: "你是别人镜头里的哪种猫？",
     options: [
-      { text: "颜值派：靠美貌征服世界", breed: "Ragdoll", expression: "smiling" },
-      { text: "才艺派：会各种搞笑技能", breed: "Tabby", expression: "excited" },
-      { text: "佛系派：躺平就是我的天赋", breed: "Persian", expression: "relaxed" },
-      { text: "戏精派：每天都在演戏", breed: "Siamese", expression: "curious" }
+      { text: "温文尔雅的优等生猫", breed: "British Shorthair", expression: "calm" },
+      { text: "热情似火的开心果猫", breed: "Bengal", expression: "excited" },
+      { text: "一脸高冷的酷哥/酷姐猫", breed: "Sphynx", expression: "serious" },
+      { text: "天然呆萌、让人想rua", breed: "Scottish Fold", expression: "smiling" }
     ]
   },
   {
-    title: "如果你是猫咪明星，想演什么角色？",
+    title: "你的猫咪外号最可能是什么？",
     options: [
-      { text: "高贵公主，优雅迷人", breed: "Russian Blue", expression: "smiling" },
-      { text: "搞笑谐星，逗人开心", breed: "Orange Cat", expression: "excited" },
-      { text: "温暖治愈系，安慰人心", breed: "Maine Coon", expression: "relaxed" },
-      { text: "神秘魅力型，深不可测", breed: "Sphynx", expression: "curious" }
+      { text: "社恐王者，见人就躲", breed: "Russian Blue", expression: "shy" },
+      { text: "夸张戏精，一天演三回", breed: "Siamese", expression: "dramatic" },
+      { text: "快乐疯子，一刻不停", breed: "Tabby", expression: "playful" },
+      { text: "优雅贵族，拒绝低级趣味", breed: "Persian", expression: "relaxed" }
     ]
   },
   {
-    title: "你希望拥有什么样的猫咪人设？",
+    title: "你理想中的猫设是什么？",
     options: [
-      { text: "傲娇小公主，要被宠爱", breed: "British Shorthair", expression: "pouting" },
-      { text: "活力小天使，带来快乐", breed: "Abyssinian", expression: "excited" },
-      { text: "贴心小棉袄，温暖陪伴", breed: "Birman", expression: "smiling" },
-      { text: "独立小酷猫，自由自在", breed: "Norwegian Forest Cat", expression: "focused" }
+      { text: "超萌宝藏猫，吸粉无数", breed: "American Shorthair", expression: "smiling" },
+      { text: "治愈陪伴猫，眼神有温度", breed: "Birman", expression: "gentle" },
+      { text: "猫界潮人，永远很酷", breed: "Abyssinian", expression: "focused" },
+      { text: "神秘的魔法师猫", breed: "Oriental Shorthair", expression: "mysterious" }
     ]
   },
   {
-    title: "朋友们会给你什么猫咪外号？",
+    title: "你演电影时最适合扮演谁？",
     options: [
-      { text: "睡神喵：永远在睡觉", breed: "Persian", expression: "sleepy" },
-      { text: "闪电喵：速度超快", breed: "Bengal", expression: "excited" },
-      { text: "社交喵：人见人爱", breed: "American Shorthair", expression: "smiling" },
-      { text: "好奇喵：什么都想知道", breed: "Devon Rex", expression: "curious" }
-    ]
-  },
-  {
-    title: "如果开一家猫咪公司，你是什么职位？",
-    options: [
-      { text: "首席颜值官，负责美貌", breed: "Balinese", expression: "smiling" },
-      { text: "首席娱乐官，负责搞笑", breed: "Tabby", expression: "excited" },
-      { text: "首席治愈官，负责温暖", breed: "Scottish Fold", expression: "relaxed" },
-      { text: "首席探索官，负责发现", breed: "Siamese", expression: "curious" }
+      { text: "猫王子/公主，仪态万千", breed: "Ragdoll", expression: "smiling" },
+      { text: "猫间谍，行踪神秘", breed: "Norwegian Forest Cat", expression: "alert" },
+      { text: "猫小丑，负责搞笑", breed: "Orange Cat", expression: "goofy" },
+      { text: "猫心理师，眼神会说话", breed: "Maine Coon", expression: "relaxed" }
     ]
   }
 ];
 
-// 阶段3：风格选择问题库
+// 阶段3：画风风格选择
 export const stage3Questions: RandomQuestion[] = [
   {
-    title: "你希望你的猫咪形象是什么风格？",
+    title: "你的猫咪风格最像哪种画？",
     options: [
-      { text: "可爱卡通，萌化人心", style: "cartoon" },
-      { text: "真实摄影，自然生动", style: "realistic" },
-      { text: "水彩手绘，温柔梦幻", style: "watercolor" },
-      { text: "油画艺术，经典优雅", style: "oil-painting" }
+      { text: "温柔朦胧的水彩画", style: "watercolor" },
+      { text: "清晰立体的油画风", style: "oil painting" },
+      { text: "线条简练的现代插画", style: "minimalist" },
+      { text: "丰富细节的照片写实", style: "realistic photo" }
     ]
   },
   {
-    title: "如果为你的猫咪拍写真，选什么风格？",
+    title: "你最爱的猫图风格是？",
     options: [
-      { text: "日系清新，治愈温暖", style: "anime" },
-      { text: "欧美复古，经典怀旧", style: "vintage" },
-      { text: "简约现代，干净利落", style: "minimalist" },
-      { text: "梦幻仙境，奇幻浪漫", style: "fantasy" }
+      { text: "日系动漫风，清新治愈", style: "anime" },
+      { text: "暗黑魔幻风，神秘高冷", style: "dark fantasy" },
+      { text: "小清新粉彩风，温柔好亲近", style: "pastel painting" },
+      { text: "搞怪表情包风，笑出声", style: "cartoon" }
     ]
   },
   {
-    title: "你的猫咪头像应该是什么感觉？",
+    title: "你希望猫咪头像给人的感觉？",
     options: [
-      { text: "手绘素描，艺术气息", style: "sketch" },
-      { text: "卡通动漫，青春活力", style: "cartoon" },
-      { text: "水墨画风，东方韵味", style: "watercolor" },
-      { text: "照片级真实，惟妙惟肖", style: "realistic" }
+      { text: "艺术气息浓厚", style: "sketch" },
+      { text: "有时尚感，像封面大片", style: "digital art" },
+      { text: "像童话书里的主角", style: "storybook" },
+      { text: "贴近自然，充满生活感", style: "realistic" }
     ]
   },
   {
-    title: "想让朋友们看到什么样的你？",
+    title: "如果你的猫咪要印在T恤上，你希望是？",
     options: [
-      { text: "可爱软萌的二次元风", style: "anime" },
-      { text: "高级质感的艺术风", style: "oil-painting" },
-      { text: "清新自然的小清新风", style: "watercolor" },
-      { text: "时尚现代的简约风", style: "minimalist" }
-    ]
-  },
-  {
-    title: "如果制作猫咪表情包，选什么画风？",
-    options: [
-      { text: "呆萌卡通风，超级可爱", style: "cartoon" },
-      { text: "真实照片风，表情到位", style: "realistic" },
-      { text: "手绘涂鸦风，随性自然", style: "sketch" },
-      { text: "复古怀旧风，经典回忆", style: "vintage" }
+      { text: "复古涂鸦风，街头潮流感", style: "pop art" },
+      { text: "素描风格，黑白极简", style: "pencil sketch" },
+      { text: "手绘卡通，适合表情包", style: "color pencil drawing" },
+      { text: "东方水墨风，有文化气质", style: "ink painting" }
     ]
   }
 ];
 
-// 阶段4：场景构建问题库
+// 阶段4：场景构建
 export const stage4Questions: RandomQuestion[] = [
   {
-    title: "你希望你的猫咪生活在什么样的环境中？",
+    title: "你的理想猫窝在哪儿？",
     options: [
-      { text: "温暖的家中，阳光透过窗户", environment: "cozy indoor", mood: "warm" },
-      { text: "花园里，被鲜花包围", environment: "sunny garden", mood: "bright" },
-      { text: "现代公寓，简约时尚", environment: "modern apartment", mood: "cool" },
-      { text: "神秘森林，充满魔法", environment: "magical forest", mood: "mysterious" }
+      { text: "窗边阳光照进的榻榻米", environment: "cozy indoor", mood: "warm" },
+      { text: "绿意满满的小花园", environment: "sunny garden", mood: "bright" },
+      { text: "未来感十足的高科技基地", environment: "futuristic lab", mood: "cool" },
+      { text: "森林小屋，神秘又宁静", environment: "magical forest", mood: "mysterious" }
     ]
   },
   {
-    title: "猫咪的你最想在哪里度过午后时光？",
+    title: "你想在哪个场景拍猫写真？",
     options: [
-      { text: "海边沙滩，听着海浪声", environment: "beach sunset", mood: "peaceful" },
-      { text: "复古书房，书香满屋", environment: "vintage room", mood: "nostalgic" },
-      { text: "雪景窗台，看雪花飞舞", environment: "snowy winter", mood: "dreamy" },
-      { text: "秋日公园，落叶纷飞", environment: "autumn leaves", mood: "nostalgic" }
+      { text: "秋日公园，金黄落叶", environment: "autumn park", mood: "nostalgic" },
+      { text: "海边沙滩，阳光微咸", environment: "beach sunset", mood: "peaceful" },
+      { text: "夜晚城市霓虹灯下", environment: "city night", mood: "vibrant" },
+      { text: "樱花树下的午后", environment: "cherry blossoms", mood: "dreamy" }
     ]
   },
   {
-    title: "理想的猫咪摄影背景是什么？",
+    title: "最适合你的猫咪生活场景是？",
     options: [
-      { text: "温馨客厅，柔软沙发", environment: "cozy indoor", mood: "warm" },
-      { text: "阳光花园，绿意盎然", environment: "sunny garden", mood: "energetic" },
-      { text: "星空下的露台", environment: "night sky", mood: "mysterious" },
-      { text: "樱花树下的春日", environment: "cherry blossoms", mood: "dreamy" }
-    ]
-  },
-  {
-    title: "如果猫咪的你要拍MV，选什么场景？",
-    options: [
-      { text: "现代都市，霓虹闪烁", environment: "modern city", mood: "energetic" },
-      { text: "梦幻城堡，童话世界", environment: "fantasy castle", mood: "dreamy" },
-      { text: "宁静湖边，水波荡漾", environment: "peaceful lake", mood: "peaceful" },
-      { text: "复古咖啡厅，文艺范儿", environment: "vintage cafe", mood: "nostalgic" }
-    ]
-  },
-  {
-    title: "猫咪的你想要什么样的专属空间？",
-    options: [
-      { text: "舒适卧室，软绵绵的床", environment: "cozy bedroom", mood: "warm" },
+      { text: "图书馆角落，安静阅读", environment: "library corner", mood: "peaceful" },
       { text: "艺术工作室，创意无限", environment: "art studio", mood: "bright" },
-      { text: "图书馆角落，安静读书", environment: "library corner", mood: "peaceful" },
-      { text: "屋顶花园，俯瞰城市", environment: "rooftop garden", mood: "cool" }
+      { text: "复古咖啡馆，文艺气息", environment: "vintage cafe", mood: "nostalgic" },
+      { text: "露天阳台，城市风景尽收眼底", environment: "rooftop view", mood: "calm" }
+    ]
+  },
+  {
+    title: "你想在哪个地方休息？",
+    options: [
+      { text: "柔软床铺上的阳光角落", environment: "cozy bedroom", mood: "warm" },
+      { text: "静谧湖边，风轻云淡", environment: "peaceful lake", mood: "serene" },
+      { text: "老式书屋的木地板上", environment: "vintage room", mood: "nostalgic" },
+      { text: "玻璃温室里的绿植之间", environment: "greenhouse", mood: "bright" }
     ]
   }
 ];

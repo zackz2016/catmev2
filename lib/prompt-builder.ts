@@ -34,7 +34,7 @@ export function buildImagePrompt(prompt: CatPrompt): string {
   }
   
   // 结尾要求
-  imagePrompt += `The overall aesthetic should be exceptionally cute, charming, and visually appealing. Ensure the image captures the unique personality and charm of this specific cat character.`;
+  imagePrompt += `The overall aesthetic should be exceptionally cute, charming, and visually appealing. Ensure the image captures the unique personality and charm of this specific cat character.No border around`;
 
   return imagePrompt;
 }
@@ -45,5 +45,5 @@ export function buildImagePrompt(prompt: CatPrompt): string {
  * @returns 简化的用户可读描述
  */
 export function buildUserFriendlyPrompt(prompt: CatPrompt): string {
-  return `Generate a ${prompt.style} style illustration of a ${prompt.breed} cat that is ${prompt.pose} with a ${prompt.expression} expression, showing a ${prompt.personality} personality${prompt.environment ? ` in a ${prompt.environment} setting` : ''}${prompt.mood ? ` with a ${prompt.mood} atmosphere` : ''}.`;
-} 
+  return `You are a ${prompt.personality} ${prompt.breed} cat.`
+}

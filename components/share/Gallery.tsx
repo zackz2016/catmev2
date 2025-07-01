@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, Share2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { useToast } from "@/hooks/use-toast"
 import type { GeneratedImage, PaginationInfo, ImagesApiResponse } from "@/types/images"
@@ -64,84 +64,7 @@ export function Gallery() {
     }
   }
 
-  // 下载图片
-  const handleDownload = async (imageUrl: string, filename: string, imageId: number) => {
-    try {
-      const response = await fetch(imageUrl)
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      
-      // 更新下载统计
-      try {
-        await fetch('/api/images/stats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageId, action: 'download' }),
-        })
-      } catch (statsError) {
-        console.error('Failed to update download stats:', statsError)
-      }
-      
-      toast({
-        title: "下载成功",
-        description: "图片已保存到本地",
-      })
-    } catch (error) {
-      console.error('Download error:', error)
-      toast({
-        title: "下载失败",
-        description: "请稍后重试",
-        variant: "destructive",
-      })
-    }
-  }
 
-  // 分享图片
-  const handleShare = async (imageUrl: string, imageId: number, prompt?: string) => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: 'AI生成的猫咪图片',
-          text: prompt || '看看这只可爱的AI猫咪！',
-          url: imageUrl,
-        })
-      } else {
-        // 回退到复制链接
-        await navigator.clipboard.writeText(imageUrl)
-        toast({
-          title: "链接已复制",
-          description: "图片链接已复制到剪贴板",
-        })
-      }
-      
-      // 更新分享统计
-      try {
-        await fetch('/api/images/stats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageId, action: 'share' }),
-        })
-      } catch (statsError) {
-        console.error('Failed to update share stats:', statsError)
-      }
-    } catch (error) {
-      if ((error as Error).name !== 'AbortError') { // 用户取消分享不算错误
-        console.error('Share error:', error)
-        toast({
-          title: "分享失败",
-          description: "无法复制链接",
-          variant: "destructive",
-        })
-      }
-    }
-  }
 
   return (
     <section className="py-20 pt-40 bg-gray-900">
@@ -190,27 +113,7 @@ export function Gallery() {
                         target.src = "/placeholder.svg?height=300&width=250"
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
-                        <Button 
-                          size="sm" 
-                          variant="secondary" 
-                          className="bg-white/20 backdrop-blur-sm"
-                          onClick={() => handleDownload(image.url, `catme-${image.id}.jpg`, image.id)}
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="secondary" 
-                          className="bg-white/20 backdrop-blur-sm"
-                          onClick={() => handleShare(image.url, image.id, image.prompt)}
-                        >
-                          <Share2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
+
                     {/* 提示词工具提示 */}
                     {image.prompt && (
                       <div className="absolute top-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
