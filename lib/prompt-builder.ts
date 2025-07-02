@@ -34,7 +34,7 @@ export function buildImagePrompt(prompt: CatPrompt): string {
   }
   
   // 结尾要求
-  imagePrompt += `The overall aesthetic should be exceptionally cute, charming, and visually appealing. Ensure the image captures the unique personality and charm of this specific cat character.No border around`;
+  imagePrompt += `The overall aesthetic should be exceptionally cute, charming, and visually appealing. Ensure the image captures the unique personality and charm of this specific cat character,No blank space,No border around,`;
 
   return imagePrompt;
 }

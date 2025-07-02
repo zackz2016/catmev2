@@ -632,7 +632,7 @@ export default function CatQuiz() {
     {/* 高清图片Modal - 仅付费用户 */}
     {userPlan.shouldUseNewAPI && generatedImage && (
       <Dialog open={showHighResModal} onOpenChange={setShowHighResModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden"> 
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-gray-900"> 
           <div className="relative">
             <img 
               src={generatedImage} 
@@ -640,7 +640,7 @@ export default function CatQuiz() {
               className="w-full h-auto max-h-[80vh] object-contain mt-10 mb-10"
             />
             {/* 下载和分享按钮 */}
-            <div className="absolute top-4 right-4 flex gap-2">
+            <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex gap-3">
                              <Button
                  size="sm"
                  variant="secondary"

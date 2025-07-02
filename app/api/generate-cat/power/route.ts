@@ -43,7 +43,9 @@ async function generateImageWithImagen4(prompt: CatPrompt): Promise<{ imageUrl: 
       }
     ],
     parameters: {
-      sampleCount: 1     
+      sampleCount: 1,
+      aspectRatio: "1:1" ,
+      safetySetting: "block_medium_and_above"    
     }
   });
   
