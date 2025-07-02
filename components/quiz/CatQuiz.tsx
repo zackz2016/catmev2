@@ -10,7 +10,7 @@ import { useUserPlan } from '@/hooks/use-user-plan';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { buildUserFriendlyPrompt } from '@/lib/prompt-builder';
-import { RefreshCw, Gift, X, ZoomIn, Download, Share2 } from 'lucide-react';
+import { RefreshCw, Gift, X, ZoomIn, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -394,55 +394,7 @@ export default function CatQuiz() {
     }
   }
 
-  // 分享图片
-  const handleShare = async (imageUrl: string, imageId: number, prompt?: string) => {
-    try {
-      // 验证URL格式是否有效
-      const isValidUrl = (url: string) => {
-        try {
-          new URL(url)
-          return url.startsWith('http://') || url.startsWith('https://')
-        } catch {
-          return false
-        }
-      }
 
-      if (navigator.share && isValidUrl(imageUrl)) {
-        await navigator.share({
-          title: 'AI生成的猫咪图片',
-          text: prompt || '看看这只可爱的AI猫咪！',
-          url: imageUrl,
-        })
-      } else {
-        // 回退到复制链接
-        await navigator.clipboard.writeText(imageUrl)
-        toast({
-          title: "链接已复制",
-          description: "图片链接已复制到剪贴板",
-        })
-      }
-      
-      // 更新分享统计
-      try {
-        await fetch('/api/images/stats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageId, action: 'share' }),
-        })
-      } catch (statsError) {
-        console.error('Failed to update share stats:', statsError)
-      }
-    } catch (error) {
-      if ((error as Error).name !== 'AbortError') { // 用户取消分享不算错误
-        console.error('Share error:', error)
-        toast({
-          title: "分享失败",
-          description: "无法复制链接",
-          variant: "destructive",
-        })
-      }
-    }
-  }
 
   // 如果是已注册用户但没有积分，显示购买提示
   if (isSignedIn && points < 1 && !isGenerating && !generatedImage) {
@@ -639,9 +591,9 @@ export default function CatQuiz() {
               alt="High Resolution Cat" 
               className="w-full h-auto max-h-[80vh] object-contain mt-10 mb-10"
             />
-            {/* 下载和分享按钮 */}
-            <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex gap-3">
-                             <Button
+            {/* 下载按钮 */}
+            <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2">
+               <Button
                  size="sm"
                  variant="secondary"
                  className="bg-white/20 backdrop-blur-sm hover:bg-white/30"
@@ -649,15 +601,6 @@ export default function CatQuiz() {
                >
                  <Download className="w-4 h-4 mr-2" />
                  Download
-               </Button>
-               <Button
-                 size="sm"
-                 variant="secondary"
-                 className="bg-white/20 backdrop-blur-sm hover:bg-white/30"
-                 onClick={() => handleShare(generatedImage, 0, currentPrompt || undefined)}
-               >
-                 <Share2 className="w-4 h-4 mr-2" />
-                 Share
                </Button>
             </div>    
           </div>

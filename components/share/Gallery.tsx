@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Loader2, Download, Share2, ZoomIn } from "lucide-react"
+import { ChevronLeft, ChevronRight, Loader2, Download, ZoomIn } from "lucide-react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import Image from "next/image"
 import { useToast } from "@/hooks/use-toast"
+import { useUserPlan } from "@/hooks/use-user-plan"
 import type { GeneratedImage, PaginationInfo, ImagesApiResponse } from "@/types/images"
 
 export function Gallery() {
   const { toast } = useToast()
+  const userPlan = useUserPlan()
   const [images, setImages] = useState<GeneratedImage[]>([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -108,58 +110,13 @@ export function Gallery() {
     }
   }
 
-  // 分享图片
-  const handleShare = async (imageUrl: string, imageId: number, prompt?: string) => {
-    try {
-      // 验证URL格式是否有效
-      const isValidUrl = (url: string) => {
-        try {
-          new URL(url)
-          return url.startsWith('http://') || url.startsWith('https://')
-        } catch {
-          return false
-        }
-      }
-
-      if (navigator.share && isValidUrl(imageUrl)) {
-        await navigator.share({
-          title: 'AI生成的猫咪图片',
-          text: prompt || '看看这只可爱的AI猫咪！',
-          url: imageUrl,
-        })
-      } else {
-        // 回退到复制链接
-        await navigator.clipboard.writeText(imageUrl)
-        toast({
-          title: "链接已复制",
-          description: "图片链接已复制到剪贴板",
-        })
-      }
-      
-      // 更新分享统计
-      try {
-        await fetch('/api/images/stats', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageId, action: 'share' }),
-        })
-      } catch (statsError) {
-        console.error('Failed to update share stats:', statsError)
-      }
-    } catch (error) {
-      if ((error as Error).name !== 'AbortError') { // 用户取消分享不算错误
-        console.error('Share error:', error)
-        toast({
-          title: "分享失败",
-          description: "无法复制链接",
-          variant: "destructive",
-        })
-      }
-    }
-  }
-
-  // 打开大图模态框
+  // 打开大图模态框 - 添加权限检查
   const handleImageClick = (image: GeneratedImage) => {
+    // 免费用户无法查看大图，直接返回不执行任何操作
+    if (userPlan.plan === 'free') {
+      return
+    }
+    
     setSelectedImage(image)
     setShowModal(true)
   }
@@ -199,7 +156,11 @@ export function Gallery() {
               {images.map((image) => (
                 <div key={image.id} className="break-inside-avoid">
                   <div 
-                    className="relative group cursor-pointer overflow-hidden rounded-lg"
+                    className={`relative group overflow-hidden rounded-lg ${
+                      userPlan.plan === 'free' 
+                        ? 'cursor-default' 
+                        : 'cursor-pointer'
+                    }`}
                     onClick={() => handleImageClick(image)}
                   >
                     <Image
@@ -215,15 +176,17 @@ export function Gallery() {
                       }}
                     />
 
-                    {/* 悬停时显示放大图标 */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <div className="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full flex items-center gap-2 text-gray-800 font-medium">
-                        <ZoomIn className="w-4 h-4" />
-                        <span className="text-sm">View</span>
+                    {/* 悬停时显示放大图标 - 仅付费用户显示 */}
+                    {userPlan.plan !== 'free' && (
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div className="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-full flex items-center gap-2 text-gray-800 font-medium">
+                          <ZoomIn className="w-4 h-4" />
+                          <span className="text-sm">View</span>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* 提示词工具提示 */}
+                    {/* 提示词工具提示 - 所有用户都显示 */}
                     {image.prompt && (
                       <div className="absolute top-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="bg-black/50 backdrop-blur-sm rounded-lg p-2">
@@ -325,8 +288,8 @@ export function Gallery() {
                   }}
                 />
                 
-                {/* 下载和分享按钮 */}
-                <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex gap-3">
+                {/* 下载按钮 */}
+                <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2">
                   <Button
                     size="sm"
                     variant="secondary"
@@ -339,19 +302,6 @@ export function Gallery() {
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Download
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="bg-white/20 backdrop-blur-sm hover:bg-white/30"
-                    onClick={() => handleShare(
-                      selectedImage.url, 
-                      selectedImage.id, 
-                      selectedImage.prompt
-                    )}
-                  >
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share
                   </Button>
                 </div>
                 

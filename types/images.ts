@@ -6,9 +6,7 @@ export interface GeneratedImage {
   url: string
   prompt?: string
   imageStyle?: string
-  userRating?: number
   downloadCount: number
-  shareCount: number
   isPublic: boolean
   width?: number
   height?: number
@@ -24,8 +22,6 @@ export interface UserImageStats {
   publicImages: number
   privateImages: number
   totalDownloads: number
-  totalShares: number
-  avgRating?: number
 }
 
 // 分页信息
@@ -37,7 +33,7 @@ export interface PaginationInfo {
   hasMore: boolean
 }
 
-// API响应类型
+// API响应格式
 export interface ImagesApiResponse {
   success: boolean
   images: GeneratedImage[]
@@ -45,27 +41,28 @@ export interface ImagesApiResponse {
   error?: string
 }
 
-export interface ImageStatsApiResponse {
-  success: boolean
-  stats?: UserImageStats
-  image?: GeneratedImage
-  message?: string
-  error?: string
-}
-
-// 保存图片请求类型
+// 保存图片请求格式
 export interface SaveImageRequest {
   imageUrl: string
   prompt?: string
   imageStyle?: string
   isPublic?: boolean
+  width?: number
+  height?: number
+  fileSize?: number
+}
+
+// 保存图片响应格式
+export interface SaveImageResponse {
+  success: boolean
+  imageId?: number
+  error?: string
 }
 
 // 更新图片统计请求类型
 export interface UpdateImageStatsRequest {
   imageId: number
-  action: 'download' | 'share' | 'rate'
-  rating?: number
+  action: 'download'
 }
 
 // Cloudinary上传结果类型

@@ -9,7 +9,7 @@ const isPublicRoute = createRouteMatcher([
   '/pricing(.*)',
   '/privacy-policy(.*)',
   '/terms-of-service(.*)',
-  '/api/generate-cat',
+  '/api/generate-cat(.*)',
   '/api/generate-quiz',
   '/api/points',
   '/api/images(.*)', // 允许未注册用户访问图库API

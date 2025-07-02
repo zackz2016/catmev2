@@ -18,8 +18,7 @@ import {
   User, 
   ImageIcon,
   BarChart3,
-  Package,
-  Star
+  Package
 } from 'lucide-react';
 import type { TransactionsResponse, PaymentTransaction, PointsTransaction } from '@/types/transactions';
 import type { PointsResponse } from '@/types/points';
@@ -642,12 +641,6 @@ function AssetsSection({
                         <span className="text-white/80 text-xs">
                           {new Date(image.createdAt).toLocaleDateString()}
                         </span>
-                        {image.userRating && (
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                            <span className="text-white/80 text-xs">{image.userRating}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>

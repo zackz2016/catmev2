@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    const { imageId, action, rating } = await request.json();
+    const { imageId, action } = await request.json();
     
     if (!imageId || !action) {
       return NextResponse.json(
@@ -14,38 +14,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // 验证action类型
-    const validActions = ['download', 'share', 'rate'];
+    // 验证action类型 - 只支持下载统计
+    const validActions = ['download'];
     if (!validActions.includes(action)) {
       return NextResponse.json(
-        { error: 'Invalid action. Must be: download, share, or rate' },
+        { error: 'Invalid action. Must be: download' },
         { status: 400 }
       );
-    }
-
-    // 如果是评分操作，需要验证用户登录和评分值
-    if (action === 'rate') {
-      const userId = session?.userId;
-      if (!userId) {
-        return NextResponse.json(
-          { error: 'Authentication required for rating' },
-          { status: 401 }
-        );
-      }
-
-      if (!rating || rating < 1 || rating > 5) {
-        return NextResponse.json(
-          { error: 'Rating must be between 1 and 5' },
-          { status: 400 }
-        );
-      }
     }
 
     // 调用数据库函数更新统计
     const { data, error } = await supabase.rpc('update_image_stats', {
       p_image_id: imageId,
       p_action: action,
-      p_rating: rating || null,
+      p_rating: null,
     });
 
     if (error) {
@@ -102,9 +84,7 @@ export async function GET(request: Request) {
           cloudinary_url,
           prompt,
           image_style,
-          user_rating,
           download_count,
-          share_count,
           is_public,
           width,
           height,
@@ -139,9 +119,7 @@ export async function GET(request: Request) {
           url: image.cloudinary_url,
           prompt: image.prompt,
           imageStyle: image.image_style,
-          userRating: image.user_rating,
           downloadCount: image.download_count,
-          shareCount: image.share_count,
           isPublic: image.is_public,
           width: image.width,
           height: image.height,
@@ -173,8 +151,6 @@ export async function GET(request: Request) {
           public_images: 0,
           private_images: 0,
           total_downloads: 0,
-          total_shares: 0,
-          avg_rating: null,
         }
       });
     }

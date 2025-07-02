@@ -48,7 +48,6 @@ export async function POST(request: Request) {
         height: uploadResult.height || 1024,
         is_public: isPublic,
         download_count: 0,
-        share_count: 0,
         created_at: new Date().toISOString(),
       }])
       .select()

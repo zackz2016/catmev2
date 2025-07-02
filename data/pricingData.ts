@@ -28,7 +28,7 @@ export const PRICE_PLANS = [
     popular: true,
     features: [
       { text: '100次图片生成', included: true },
-      { text: '图片下载和分享', included: true },
+      { text: '图片下载', included: true },
       { text: 'HD分辨率', included: true },
       { text: '商业使用权', included: true },
       { text: '优先处理', included: true },
@@ -43,10 +43,11 @@ export const PRICE_PLANS = [
     period: '/bundle',
     features: [
       { text: '300次图片生成', included: true },
-      { text: '图片下载和分享', included: true },
+      { text: '图片下载', included: true },
       { text: 'HD分辨率', included: true },
       { text: '商业使用权', included: true },
       { text: '优先处理', included: true },    
     ],
   },
-]; 
+];
+
